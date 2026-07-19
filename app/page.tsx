@@ -1030,6 +1030,62 @@ export default function Home() {
       </header>
 
       <section className="game-wrap" aria-label="직선 게임">
+        {screen !== "menu" && (
+          <div className="play-status-bar">
+            <div className="game-hud" aria-live="polite">
+              <div>
+                <span className="hud-label">STAGE</span>
+                <strong>{String(stageIndex + 1).padStart(2, "0")}</strong>
+              </div>
+              <div className="hud-divider" />
+              <div>
+                <span className="hud-label">MOVE</span>
+                <strong>{String(moves).padStart(2, "0")}</strong>
+              </div>
+              <div className="hud-divider" />
+              <div>
+                <span className="hud-label">PAR</span>
+                <strong>{currentLevel.par}</strong>
+              </div>
+              <div className="hud-divider hud-death-divider" />
+              <div className="death-count">
+                <span className="hud-label">RETRY</span>
+                <strong>{deaths}</strong>
+              </div>
+              {currentLevel.mechanics.includes("switch") && (
+                <>
+                  <div className="hud-divider hud-gate-divider" />
+                  <div className={`gate-state ${runState.gateOpen ? "is-open" : ""}`}>
+                    <span className="hud-label">GATE</span>
+                    <strong>{runState.gateOpen ? "ON" : "OFF"}</strong>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="chapter-status" aria-label={`${currentChapterMeta.name} 진행 중`}>
+              <strong>{currentChapterMeta.code}</strong>
+              <div className="stage-progress">
+                {currentChapterLevels.map((level) => (
+                  <span
+                    key={level.id}
+                    className={level.id <= stageIndex + 1 ? "is-active" : ""}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="game-tools">
+              <button type="button" onClick={() => startStage(stageIndexRef.current)} aria-label="현재 단계 다시 시작">
+                ↻
+              </button>
+              <button type="button" onClick={returnToMenu} aria-label="메뉴로 돌아가기">
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
         <div
           ref={gamePanelRef}
           className={`game-panel screen-${screen} ${bump ? "is-bumping" : ""}`}
@@ -1168,62 +1224,6 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          )}
-
-          {screen !== "menu" && (
-            <>
-              <div className="game-hud" aria-live="polite">
-                <div>
-                  <span className="hud-label">STAGE</span>
-                  <strong>{String(stageIndex + 1).padStart(2, "0")}</strong>
-                </div>
-                <div className="hud-divider" />
-                <div>
-                  <span className="hud-label">MOVE</span>
-                  <strong>{String(moves).padStart(2, "0")}</strong>
-                </div>
-                <div className="hud-divider" />
-                <div>
-                  <span className="hud-label">PAR</span>
-                  <strong>{currentLevel.par}</strong>
-                </div>
-                <div className="hud-divider hud-death-divider" />
-                <div className="death-count">
-                  <span className="hud-label">RETRY</span>
-                  <strong>{deaths}</strong>
-                </div>
-                {currentLevel.mechanics.includes("switch") && (
-                  <>
-                    <div className="hud-divider hud-gate-divider" />
-                    <div className={`gate-state ${runState.gateOpen ? "is-open" : ""}`}>
-                      <span className="hud-label">GATE</span>
-                      <strong>{runState.gateOpen ? "ON" : "OFF"}</strong>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="chapter-status" aria-label={`${currentChapterMeta.name} 진행 중`}>
-                <strong>{currentChapterMeta.code}</strong>
-                <div className="stage-progress">
-                  {currentChapterLevels.map((level) => (
-                    <span
-                      key={level.id}
-                      className={level.id <= stageIndex + 1 ? "is-active" : ""}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="game-tools">
-                <button type="button" onClick={() => startStage(stageIndexRef.current)} aria-label="현재 단계 다시 시작">
-                  ↻
-                </button>
-                <button type="button" onClick={returnToMenu} aria-label="메뉴로 돌아가기">
-                  ×
-                </button>
-              </div>
-            </>
           )}
 
           {isDead && (
