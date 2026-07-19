@@ -60,63 +60,76 @@ const stateKey = (state) => `${state.cell.col},${state.cell.row}|${state.gateOpe
 const same = (a, b) => a.col === b.col && a.row === b.row;
 const inside = (cell) => cell.col >= 0 && cell.col < GRID_COLS && cell.row >= 0 && cell.row < GRID_ROWS;
 
-function makeMaze(random, loopChance, exits) {
-  const rows = Array.from({ length: GRID_ROWS }, () => Array(GRID_COLS).fill("#"));
-  const roomCols = Math.floor((GRID_COLS - 1) / 2);
-  const roomRows = Math.floor((GRID_ROWS - 1) / 2);
-  const visited = new Set();
-  const startRoom = {
-    col: Math.floor(random() * roomCols),
-    row: Math.floor(random() * roomRows),
-  };
-  const stack = [startRoom];
-  visited.add(key(startRoom));
-  rows[startRoom.row * 2 + 1][startRoom.col * 2 + 1] = ".";
+const WALL_TARGETS = [102, 88, 74, 72, 76, 82];
+const BOUNDARY_TARGETS = [46, 40, 34, 32, 34, 36];
 
-  while (stack.length > 0) {
-    const current = stack[stack.length - 1];
-    const neighbors = shuffle([
-      { col: current.col, row: current.row - 1 },
-      { col: current.col, row: current.row + 1 },
-      { col: current.col - 1, row: current.row },
-      { col: current.col + 1, row: current.row },
-    ], random).filter((cell) =>
-      cell.col >= 0 && cell.col < roomCols && cell.row >= 0 && cell.row < roomRows && !visited.has(key(cell)),
-    );
-
-    const next = neighbors[0];
-    if (!next) {
-      stack.pop();
-      continue;
-    }
-
-    const currentGrid = { col: current.col * 2 + 1, row: current.row * 2 + 1 };
-    const nextGrid = { col: next.col * 2 + 1, row: next.row * 2 + 1 };
-    rows[(currentGrid.row + nextGrid.row) / 2][(currentGrid.col + nextGrid.col) / 2] = ".";
-    rows[nextGrid.row][nextGrid.col] = ".";
-    visited.add(key(next));
-    stack.push(next);
-  }
-
-  for (let row = 1; row < GRID_ROWS - 1; row += 1) {
-    for (let col = 1; col < GRID_COLS - 1; col += 1) {
-      if (rows[row][col] !== "#") continue;
-      const horizontalBridge = col % 2 === 0 && row % 2 === 1 && rows[row][col - 1] === "." && rows[row][col + 1] === ".";
-      const verticalBridge = row % 2 === 0 && col % 2 === 1 && rows[row - 1][col] === "." && rows[row + 1][col] === ".";
-      if ((horizontalBridge || verticalBridge) && random() < loopChance) rows[row][col] = ".";
+function wallNeighbors(rows, cell) {
+  let count = 0;
+  for (let rowOffset = -1; rowOffset <= 1; rowOffset += 1) {
+    for (let colOffset = -1; colOffset <= 1; colOffset += 1) {
+      if (rowOffset === 0 && colOffset === 0) continue;
+      const row = cell.row + rowOffset;
+      const col = cell.col + colOffset;
+      if (row >= 0 && row < GRID_ROWS && col >= 0 && col < GRID_COLS && rows[row][col] === "#") {
+        count += 1;
+      }
     }
   }
+  return count;
+}
 
-  const boundaryCandidates = [];
-  for (let col = 1; col < GRID_COLS - 1; col += 2) {
-    boundaryCandidates.push({ col, row: 0 }, { col, row: GRID_ROWS - 1 });
+function closesTwoByTwo(rows, cell) {
+  for (const rowOffset of [-1, 0]) {
+    for (const colOffset of [-1, 0]) {
+      const top = cell.row + rowOffset;
+      const left = cell.col + colOffset;
+      if (top < 0 || left < 0 || top + 1 >= GRID_ROWS || left + 1 >= GRID_COLS) continue;
+      let walls = 0;
+      for (let row = top; row <= top + 1; row += 1) {
+        for (let col = left; col <= left + 1; col += 1) {
+          if ((row === cell.row && col === cell.col) || rows[row][col] === "#") walls += 1;
+        }
+      }
+      if (walls === 4) return true;
+    }
   }
-  for (let row = 1; row < GRID_ROWS - 1; row += 2) {
-    boundaryCandidates.push({ col: 0, row }, { col: GRID_COLS - 1, row });
+  return false;
+}
+
+// 열린 보드에 듬성듬성 놓인 '정지 블록'으로 직선 이동 퍼즐을 만듭니다.
+// 벽으로 복도를 파는 미로와 달리, 플레이어가 긴 직선을 읽고 다음 정지점을 고르게 합니다.
+function makeSparseArena(random, group, stageInGroup) {
+  const rows = Array.from({ length: GRID_ROWS }, () => Array(GRID_COLS).fill("."));
+  const wallTarget = WALL_TARGETS[group] - Math.min(stageInGroup, 3) * 2;
+  const boundaryTarget = BOUNDARY_TARGETS[group] - Math.min(stageInGroup, 2);
+  const boundary = [];
+  const interior = [];
+
+  for (let row = 0; row < GRID_ROWS; row += 1) {
+    for (let col = 0; col < GRID_COLS; col += 1) {
+      const cell = { col, row };
+      if (row === 0 || row === GRID_ROWS - 1 || col === 0 || col === GRID_COLS - 1) {
+        boundary.push(cell);
+      } else {
+        interior.push(cell);
+      }
+    }
   }
-  shuffle(boundaryCandidates, random).slice(0, exits).forEach((cell) => {
-    rows[cell.row][cell.col] = ".";
+
+  // 경계에는 안전한 정지점과 죽는 틈을 모두 남깁니다.
+  shuffle(boundary, random).slice(0, boundaryTarget).forEach((cell) => {
+    rows[cell.row][cell.col] = "#";
   });
+
+  let placed = boundaryTarget;
+  for (const cell of shuffle(interior, random)) {
+    if (placed >= wallTarget) break;
+    if (closesTwoByTwo(rows, cell)) continue;
+    const neighborLimit = group <= 1 ? 3 : 2;
+    if (wallNeighbors(rows, cell) > neighborLimit) continue;
+    rows[cell.row][cell.col] = "#";
+    placed += 1;
+  }
 
   return rows;
 }
@@ -205,14 +218,17 @@ function advance(level, state, direction, goal = null) {
   let current = { ...state.cell };
   let moved = false;
   let features = 0;
+  let travel = 0;
 
   while (true) {
     const next = { col: current.col + vector.col, row: current.row + vector.row };
-    if (!inside(next)) return { outcome: "death" };
+    if (!inside(next)) return { outcome: "death", travel };
     const nextKey = key(next);
 
     if (level.walls.has(nextKey) || (level.gates.has(nextKey) && !state.gateOpen)) {
-      return moved ? { outcome: "stop", state: { ...state, cell: current }, features } : { outcome: "blocked" };
+      return moved
+        ? { outcome: "stop", state: { ...state, cell: current }, features, travel }
+        : { outcome: "blocked", travel };
     }
 
     const fragileIndex = level.fragile.findIndex((cell) => same(cell, next));
@@ -221,22 +237,26 @@ function advance(level, state, direction, goal = null) {
         outcome: "break",
         state: { ...state, cell: current, brokenMask: state.brokenMask | (1 << fragileIndex) },
         features: features | FEATURE.break,
+        travel,
       };
     }
 
     const oneWay = level.oneWays.get(nextKey);
     if (oneWay && !arrowAllows(oneWay, direction)) {
-      return moved ? { outcome: "stop", state: { ...state, cell: current }, features } : { outcome: "blocked" };
+      return moved
+        ? { outcome: "stop", state: { ...state, cell: current }, features, travel }
+        : { outcome: "blocked", travel };
     }
 
     current = next;
     moved = true;
+    travel += 1;
     if (oneWay) features |= FEATURE.oneWay;
     if (level.gates.has(nextKey) && state.gateOpen) features |= FEATURE.gate;
     if (fragileIndex >= 0) features |= FEATURE.brokenPass;
 
     if (goal && same(current, goal)) {
-      return { outcome: "goal", state: { ...state, cell: current }, features };
+      return { outcome: "goal", state: { ...state, cell: current }, features, travel };
     }
 
     if (level.switches.has(nextKey) && !state.gateOpen) {
@@ -244,6 +264,7 @@ function advance(level, state, direction, goal = null) {
         outcome: "switch",
         state: { ...state, cell: current, gateOpen: true },
         features: features | FEATURE.switch,
+        travel,
       };
     }
 
@@ -253,9 +274,27 @@ function advance(level, state, direction, goal = null) {
         outcome: "portal",
         state: { ...state, cell: { ...level.portals[portalIndex === 0 ? 1 : 0] } },
         features: features | FEATURE.portal,
+        travel,
       };
     }
   }
+}
+
+function measureSolution(level, start, goal, path) {
+  let state = { cell: { ...start }, gateOpen: false, brokenMask: 0 };
+  const travel = [];
+  for (const direction of path) {
+    const plan = advance(level, state, direction, goal);
+    if (["blocked", "death"].includes(plan.outcome)) return null;
+    travel.push(plan.travel);
+    if (plan.outcome === "goal") break;
+    state = plan.state;
+  }
+  return {
+    average: travel.reduce((sum, distance) => sum + distance, 0) / travel.length,
+    longMoves: travel.filter((distance) => distance >= 4).length,
+    longest: Math.max(...travel),
+  };
 }
 
 function explore(level, start) {
@@ -335,8 +374,7 @@ function generateStage(stageIndex) {
 
   for (let attempt = 0; attempt < 70000; attempt += 1) {
     const random = rng(0x51f15e + stageIndex * 100003 + attempt * 7919);
-    const loopChance = 0.08 + group * 0.025 + random() * 0.08;
-    const rows = makeMaze(random, loopChance, 4 + group);
+    const rows = makeSparseArena(random, group, stageIndex % 5);
     placeMechanics(rows, group, random);
     const level = parse(rows);
     const starts = shuffle(ordinaryCells(rows), random).slice(0, 14);
@@ -355,6 +393,10 @@ function generateStage(stageIndex) {
         if (same(start, goal)) continue;
         const solved = solve(level, start, goal);
         if (!solved || solved.path.length !== target || (solved.used & required) !== required) continue;
+        const movement = measureSolution(level, start, goal, solved.path);
+        if (!movement) continue;
+        const minimumLongMoves = Math.max(3, Math.floor(target * 0.3));
+        if (movement.average < 3 || movement.longMoves < minimumLongMoves) continue;
 
         const outputRows = rows.map((row) => [...row]);
         outputRows[start.row][start.col] = "S";
@@ -369,6 +411,9 @@ function generateStage(stageIndex) {
             states: explored.nodes.length,
             branches: explored.branchStates,
             deadlyChoices: explored.deadlyChoices,
+            averageTravel: movement.average,
+            longMoves: movement.longMoves,
+            longestTravel: movement.longest,
             attempt,
           },
         };
@@ -383,8 +428,15 @@ for (let index = 0; index < targets.length; index += 1) {
   const stage = generateStage(index);
   campaign.push(stage);
   console.error(
-    `stage ${String(stage.id).padStart(2, "0")} par=${stage.par} states=${stage.stats.states} branches=${stage.stats.branches} attempt=${stage.stats.attempt}`,
+    `stage ${String(stage.id).padStart(2, "0")} par=${stage.par} walls=${stage.rows.join("").split("#").length - 1} avg=${stage.stats.averageTravel.toFixed(1)} long=${stage.stats.longMoves} max=${stage.stats.longestTravel} states=${stage.stats.states} branches=${stage.stats.branches} attempt=${stage.stats.attempt}`,
   );
 }
 
-console.log(JSON.stringify(campaign, null, 2));
+const campaignRows = campaign.map(({ id, name, rows, par }) => ({
+  id,
+  name,
+  rows,
+  expectedPar: par,
+}));
+
+console.log(`export const CAMPAIGN_ROWS = ${JSON.stringify(campaignRows, null, 2)};`);

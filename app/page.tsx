@@ -39,7 +39,7 @@ type ActiveMove = {
 const AVATAR_GRID = 10;
 const AVATAR_STORAGE_KEY = "straight-line-avatar-v2";
 const UNLOCK_STORAGE_KEY = "straight-line-unlocked-v3";
-const BEST_STORAGE_KEY = "straight-line-bests-v3";
+const BEST_STORAGE_KEY = "straight-line-bests-v4";
 const LEGACY_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v2";
 const LEGACY_BEST_STORAGE_KEY = "straight-line-bests-v2";
 const MOVE_SPEED = 680;
@@ -384,13 +384,10 @@ export default function Home() {
       const storedBests = JSON.parse(window.localStorage.getItem(BEST_STORAGE_KEY) ?? "null");
       if (Array.isArray(storedBests) && storedBests.length === LEVELS.length) {
         setStageBests(storedBests.map((best) => (typeof best === "number" ? best : null)));
-      } else if (Array.isArray(legacyBests)) {
-        const migratedBests = Array<number | null>(LEVELS.length).fill(null);
-        legacyBests.slice(0, 5).forEach((best, index) => {
-          if (typeof best === "number") migratedBests[index] = best;
-        });
-        setStageBests(migratedBests);
-        window.localStorage.setItem(BEST_STORAGE_KEY, JSON.stringify(migratedBests));
+      } else {
+        const freshBests = Array<number | null>(LEVELS.length).fill(null);
+        setStageBests(freshBests);
+        window.localStorage.setItem(BEST_STORAGE_KEY, JSON.stringify(freshBests));
       }
     } catch {
       // 손상된 로컬 저장값은 기본값으로 안전하게 대체합니다.
@@ -1043,7 +1040,7 @@ export default function Home() {
             className="game-canvas"
             width={WORLD_WIDTH}
             height={WORLD_HEIGHT}
-            aria-label={`${screen === "menu" ? selectedLevel.name : currentLevel.name} 스테이지의 격자 미로`}
+            aria-label={`${screen === "menu" ? selectedLevel.name : currentLevel.name} 스테이지의 직선 퍼즐 보드`}
             role="img"
             onPointerDown={onPointerDown}
             onPointerUp={onPointerUp}
@@ -1056,7 +1053,7 @@ export default function Home() {
                   <p className="game-kicker">SLIDE · STOP · SURVIVE</p>
                   <h1>직선 게임</h1>
                   <p className="menu-copy">
-                    더 넓어진 30개 맵에서 벽을 이용해 멈추고, 위험한 경계와 단계별
+                    듬성듬성한 정지 블록을 골라 긴 직선을 만들고, 위험한 경계와 단계별
                     기믹을 돌파하세요.
                   </p>
                   <div className="menu-actions">

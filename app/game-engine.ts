@@ -73,13 +73,15 @@ export const PLAYER_RATIO = 0.95;
 export const PLAYER_SIZE = CELL_SIZE * PLAYER_RATIO;
 export const INITIAL_RUN_STATE: RunState = { gateOpen: false, brokenMask: 0 };
 
+const MAX_WALLS_BY_CHAPTER = [110, 100, 85, 85, 90, 95];
+
 export const CHAPTERS: Chapter[] = [
   {
     id: 1,
     code: "BASIC",
     name: "기본 궤도",
     range: "PAR 8–12",
-    description: "벽에서 멈추는 감각과 위험한 경계를 익히는 구역",
+    description: "정지 블록에서 멈추는 감각과 위험한 경계를 익히는 구역",
     mechanics: ["벽돌", "위험 경계"],
     accent: "#74efc2",
   },
@@ -88,8 +90,8 @@ export const CHAPTERS: Chapter[] = [
     code: "DETOUR",
     name: "우회 구역",
     range: "PAR 12–16",
-    description: "정답처럼 보이는 샛길과 긴 우회 경로가 늘어나는 구역",
-    mechanics: ["미끼 길", "다중 선택"],
+    description: "넓은 공간의 정지점을 골라 긴 우회 궤도를 만드는 구역",
+    mechanics: ["미끼 정지점", "다중 선택"],
     accent: "#ffd166",
   },
   {
@@ -334,6 +336,29 @@ function solveLevel(level: Pick<Level, keyof PlayableLevel | "start">) {
   return null;
 }
 
+function measureSolution(
+  level: Pick<Level, keyof PlayableLevel | "start">,
+  path: Direction[],
+) {
+  let cell = { ...level.start };
+  let state = { ...INITIAL_RUN_STATE };
+  const distances: number[] = [];
+
+  for (const direction of path) {
+    const plan = slide(level, cell, direction, state);
+    if (plan.outcome === "blocked" || plan.outcome === "death") return null;
+    const travelTarget = plan.outcome === "portal" ? plan.entry : plan.destination;
+    distances.push(Math.abs(travelTarget.col - cell.col) + Math.abs(travelTarget.row - cell.row));
+    cell = { ...plan.destination };
+    state = { ...plan.state };
+  }
+
+  return {
+    average: distances.reduce((sum, distance) => sum + distance, 0) / distances.length,
+    longMoves: distances.filter((distance) => distance >= 4).length,
+  };
+}
+
 function requiredFeatures(chapter: number) {
   if (chapter === 2) return FEATURE.oneWay;
   if (chapter === 3) return FEATURE.oneWay | FEATURE.portal;
@@ -420,9 +445,18 @@ function buildLevel(stage: (typeof CAMPAIGN_ROWS)[number]): Level {
     gates,
     fragileCells,
   };
+  const wallLimit = MAX_WALLS_BY_CHAPTER[chapter];
+  if (blocks.size > wallLimit) {
+    throw new Error(`Stage ${id} is too dense (${blocks.size}/${wallLimit} walls).`);
+  }
   const solved = solveLevel(base);
   if (!solved || solved.path.length !== expectedPar) {
     throw new Error(`Stage ${id} failed its verified PAR ${expectedPar}.`);
+  }
+  const movement = measureSolution(base, solved.path);
+  const minimumLongMoves = Math.max(3, Math.floor(expectedPar * 0.3));
+  if (!movement || movement.average < 3 || movement.longMoves < minimumLongMoves) {
+    throw new Error(`Stage ${id} does not preserve enough straight-line movement.`);
   }
   const required = requiredFeatures(chapter);
   if ((solved.features & required) !== required) {
@@ -452,5 +486,5 @@ function buildLevel(stage: (typeof CAMPAIGN_ROWS)[number]): Level {
   };
 }
 
-// 고정 시드 미로 생성기에서 후보를 만든 뒤 BFS 최단 경로와 기믹 사용을 통과한 맵만 포함합니다.
+// 고정 시드 희소 보드 생성기에서 후보를 만든 뒤 BFS 최단 경로와 기믹 사용을 통과한 맵만 포함합니다.
 export const LEVELS: Level[] = CAMPAIGN_ROWS.map(buildLevel);
