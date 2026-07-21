@@ -14,6 +14,9 @@ import {
   GRID_ROWS,
   INITIAL_RUN_STATE,
   LEVELS,
+  MAPS_PER_PLANET,
+  MAPS_PER_ZONE,
+  PLANETS,
   PLAYER_RATIO,
   PLAYER_SIZE,
   WORLD_HEIGHT,
@@ -21,6 +24,7 @@ import {
   boundaryTarget,
   cellCenter,
   slide,
+  starsFor,
   type Cell,
   type Direction,
   type Point,
@@ -30,19 +34,29 @@ import {
 type Screen = "menu" | "playing" | "won";
 type Pixel = string | null;
 type ActiveMove = {
-  target: Point;
-  outcome: "stop" | "goal" | "death" | "portal" | "switch" | "break";
+  targets: Point[];
+  targetIndex: number;
+  outcome: "stop" | "goal" | "death" | "portal" | "switch" | "phase" | "break";
   destination?: Cell;
   nextState: RunState;
 };
 
 const AVATAR_GRID = 10;
 const AVATAR_STORAGE_KEY = "straight-line-avatar-v2";
-const UNLOCK_STORAGE_KEY = "straight-line-unlocked-v3";
-const BEST_STORAGE_KEY = "straight-line-bests-v4";
+const UNLOCK_STORAGE_KEY = "straight-line-unlocked-v5";
+const BEST_STORAGE_KEY = "straight-line-bests-v5";
+const PREVIOUS_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v3";
+const PREVIOUS_BEST_STORAGE_KEY = "straight-line-bests-v4";
 const LEGACY_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v2";
 const LEGACY_BEST_STORAGE_KEY = "straight-line-bests-v2";
 const MOVE_SPEED = 680;
+
+const DIRECTION_LABEL: Record<Direction, string> = {
+  up: "↑ 위",
+  down: "↓ 아래",
+  left: "← 왼쪽",
+  right: "→ 오른쪽",
+};
 
 const KEY_TO_DIRECTION: Record<string, Direction | undefined> = {
   ArrowUp: "up",
@@ -325,6 +339,7 @@ export default function Home() {
   const [stageIndex, setStageIndex] = useState(0);
   const [selectedStage, setSelectedStage] = useState(0);
   const [selectedChapter, setSelectedChapter] = useState(0);
+  const [selectedPlanet, setSelectedPlanet] = useState(0);
   const [moves, setMoves] = useState(0);
   const [deaths, setDeaths] = useState(0);
   const [runState, setRunState] = useState<RunState>({ ...INITIAL_RUN_STATE });
@@ -338,6 +353,8 @@ export default function Home() {
   const [bump, setBump] = useState(false);
   const [isDead, setIsDead] = useState(false);
   const [newBest, setNewBest] = useState(false);
+  const [hintVisible, setHintVisible] = useState(false);
+  const [shareStatus, setShareStatus] = useState("");
   const [avatarPixels, setAvatarPixels] = useState<Pixel[]>([...AVATAR_PRESETS[0].pixels]);
   const [draftPixels, setDraftPixels] = useState<Pixel[]>([...AVATAR_PRESETS[0].pixels]);
 
@@ -360,15 +377,18 @@ export default function Home() {
       }
 
       const currentUnlocked = window.localStorage.getItem(UNLOCK_STORAGE_KEY);
+      const previousUnlocked = window.localStorage.getItem(PREVIOUS_UNLOCK_STORAGE_KEY);
       const legacyUnlocked = Number(
         window.localStorage.getItem(LEGACY_UNLOCK_STORAGE_KEY) ?? "1",
       );
       const legacyBests = JSON.parse(
         window.localStorage.getItem(LEGACY_BEST_STORAGE_KEY) ?? "null",
       );
-      let unlockedValue = Number(currentUnlocked ?? legacyUnlocked ?? 1) || 1;
+      let unlockedValue =
+        Number(currentUnlocked ?? previousUnlocked ?? legacyUnlocked ?? 1) || 1;
       if (
         currentUnlocked === null &&
+        previousUnlocked === null &&
         legacyUnlocked >= 5 &&
         Array.isArray(legacyBests) &&
         typeof legacyBests[4] === "number"
@@ -379,15 +399,27 @@ export default function Home() {
       setUnlocked(safeUnlocked);
       setSelectedStage(safeUnlocked - 1);
       setSelectedChapter(Math.floor((safeUnlocked - 1) / 5));
+      setSelectedPlanet(Math.floor((safeUnlocked - 1) / MAPS_PER_PLANET));
       window.localStorage.setItem(UNLOCK_STORAGE_KEY, String(safeUnlocked));
 
       const storedBests = JSON.parse(window.localStorage.getItem(BEST_STORAGE_KEY) ?? "null");
+      const previousBests = JSON.parse(
+        window.localStorage.getItem(PREVIOUS_BEST_STORAGE_KEY) ?? "null",
+      );
       if (Array.isArray(storedBests) && storedBests.length === LEVELS.length) {
         setStageBests(storedBests.map((best) => (typeof best === "number" ? best : null)));
       } else {
-        const freshBests = Array<number | null>(LEVELS.length).fill(null);
-        setStageBests(freshBests);
-        window.localStorage.setItem(BEST_STORAGE_KEY, JSON.stringify(freshBests));
+        const migratedBests = Array<number | null>(LEVELS.length).fill(null);
+        const sourceBests = Array.isArray(previousBests)
+          ? previousBests
+          : Array.isArray(legacyBests)
+            ? legacyBests
+            : [];
+        sourceBests.slice(0, MAPS_PER_PLANET).forEach((best, index) => {
+          if (typeof best === "number") migratedBests[index] = best;
+        });
+        setStageBests(migratedBests);
+        window.localStorage.setItem(BEST_STORAGE_KEY, JSON.stringify(migratedBests));
       }
     } catch {
       // 손상된 로컬 저장값은 기본값으로 안전하게 대체합니다.
@@ -451,11 +483,14 @@ export default function Home() {
       setStageIndex(safeIndex);
       setSelectedStage(safeIndex);
       setSelectedChapter(Math.floor(safeIndex / 5));
+      setSelectedPlanet(Math.floor(safeIndex / MAPS_PER_PLANET));
       setMoves(0);
       setDeaths(0);
       setRunState({ ...INITIAL_RUN_STATE });
       setIsDead(false);
       setNewBest(false);
+      setHintVisible(false);
+      setShareStatus("");
       setBump(false);
       setGameScreen("playing");
       window.setTimeout(() => gamePanelRef.current?.focus(), 0);
@@ -562,13 +597,17 @@ export default function Home() {
         return;
       }
 
-      const target =
-        plan.outcome === "death"
-          ? boundaryTarget(plan.edgeCell, plan.direction)
-          : cellCenter(plan.outcome === "portal" ? plan.entry : plan.destination);
+      const targets = plan.waypoints.map(cellCenter);
+      if (plan.outcome === "death") {
+        targets.push(boundaryTarget(plan.edgeCell, plan.direction));
+      }
+      if (targets.length === 0 && plan.outcome !== "death") {
+        targets.push(cellCenter(plan.destination));
+      }
 
       activeMoveRef.current = {
-        target,
+        targets,
+        targetIndex: 0,
         outcome: plan.outcome,
         destination: plan.outcome === "death" ? undefined : plan.destination,
         nextState: { ...plan.state },
@@ -625,7 +664,7 @@ export default function Home() {
     const context = canvas.getContext("2d");
     if (!context) return;
 
-    const drawBlock = (cell: Cell, alpha = 1) => {
+    const drawBlock = (cell: Cell, planet: number, alpha = 1) => {
       const x = cell.col * CELL_SIZE;
       const y = cell.row * CELL_SIZE;
       const size = CELL_SIZE;
@@ -633,20 +672,55 @@ export default function Home() {
       context.globalAlpha = alpha;
       context.fillStyle = "rgba(0, 0, 0, 0.7)";
       context.fillRect(x + 3, y + 4, size - 2, size - 2);
-      context.fillStyle = "#9f233b";
-      context.fillRect(x, y, size, size);
-      context.fillStyle = "#d83d58";
-      context.fillRect(x + 2, y + 2, size - 4, size - 4);
-      context.fillStyle = "#ffbdc8";
-      context.fillRect(x + 1, y + 1, size - 2, 2);
-      context.fillRect(x + 1, y + size - 3, size - 2, 2);
-      for (let row = 9; row < size; row += 9) {
-        context.fillRect(x + 1, y + row, size - 2, 2);
-      }
-      context.fillStyle = "#ff91a5";
-      for (let row = 0; row < 4; row += 1) {
-        const offset = row % 2 === 0 ? 9 : 18;
-        context.fillRect(x + offset, y + row * 9 + 2, 2, 7);
+      if (planet === 0) {
+        context.fillStyle = "#9f233b";
+        context.fillRect(x, y, size, size);
+        context.fillStyle = "#d83d58";
+        context.fillRect(x + 2, y + 2, size - 4, size - 4);
+        context.fillStyle = "#ffbdc8";
+        context.fillRect(x + 1, y + 1, size - 2, 2);
+        context.fillRect(x + 1, y + size - 3, size - 2, 2);
+        for (let row = 9; row < size; row += 9) {
+          context.fillRect(x + 1, y + row, size - 2, 2);
+        }
+        context.fillStyle = "#ff91a5";
+        for (let row = 0; row < 4; row += 1) {
+          const offset = row % 2 === 0 ? 9 : 18;
+          context.fillRect(x + offset, y + row * 9 + 2, 2, 7);
+        }
+      } else if (planet === 1) {
+        context.fillStyle = "#2b343b";
+        context.fillRect(x, y, size, size);
+        context.fillStyle = "#53616b";
+        context.fillRect(x + 3, y + 3, size - 6, size - 6);
+        context.fillStyle = "#74838d";
+        context.fillRect(x + 5, y + 5, size - 10, 3);
+        context.fillStyle = "#1b2227";
+        context.fillRect(x + 8, y + 12, size - 16, size - 20);
+        context.fillStyle = "#ffd166";
+        [[6, 6], [size - 8, 6], [6, size - 8], [size - 8, size - 8]].forEach(
+          ([offsetX, offsetY]) => context.fillRect(x + offsetX, y + offsetY, 3, 3),
+        );
+      } else {
+        context.fillStyle = "#271d4b";
+        context.fillRect(x, y, size, size);
+        context.fillStyle = "#593b91";
+        context.beginPath();
+        context.moveTo(x + 2, y + 2);
+        context.lineTo(x + size - 3, y + 7);
+        context.lineTo(x + size - 8, y + size - 3);
+        context.lineTo(x + 8, y + size - 5);
+        context.closePath();
+        context.fill();
+        context.fillStyle = "#a987ff";
+        context.beginPath();
+        context.moveTo(x + 5, y + 5);
+        context.lineTo(x + size - 8, y + 9);
+        context.lineTo(x + 13, y + size - 8);
+        context.closePath();
+        context.fill();
+        context.fillStyle = "rgba(212, 248, 255, 0.82)";
+        context.fillRect(x + 8, y + 7, 3, size - 17);
       }
       context.restore();
     };
@@ -760,6 +834,80 @@ export default function Home() {
       context.restore();
     };
 
+    const drawRotator = (cell: Cell, alpha = 1) => {
+      const center = cellCenter(cell);
+      const pulse = 0.85 + Math.sin(performance.now() / 160) * 0.15;
+      context.save();
+      context.globalAlpha = alpha;
+      context.translate(center.x, center.y);
+      context.fillStyle = "rgba(255, 209, 102, 0.16)";
+      context.strokeStyle = "#ffd166";
+      context.lineWidth = 2;
+      context.fillRect(-14, -14, 28, 28);
+      context.strokeRect(-13, -13, 26, 26);
+      context.rotate(performance.now() / 1400);
+      context.beginPath();
+      context.arc(0, 0, 8 + pulse, -Math.PI * 0.25, Math.PI * 1.2);
+      context.stroke();
+      context.fillStyle = "#ffd166";
+      context.beginPath();
+      context.moveTo(9, -8);
+      context.lineTo(14, -3);
+      context.lineTo(7, -2);
+      context.closePath();
+      context.fill();
+      context.fillRect(-3, -3, 6, 6);
+      context.restore();
+    };
+
+    const drawPhaseSwitch = (cell: Cell, phase: 0 | 1, alpha = 1) => {
+      const x = cell.col * CELL_SIZE;
+      const y = cell.row * CELL_SIZE;
+      const color = phase === 0 ? "#55f2df" : "#a987ff";
+      context.save();
+      context.globalAlpha = alpha;
+      context.fillStyle = phase === 0 ? "rgba(85, 242, 223, 0.17)" : "rgba(169, 135, 255, 0.18)";
+      context.fillRect(x + 4, y + 4, CELL_SIZE - 8, CELL_SIZE - 8);
+      context.strokeStyle = color;
+      context.lineWidth = 2;
+      context.strokeRect(x + 6, y + 6, CELL_SIZE - 12, CELL_SIZE - 12);
+      context.fillStyle = color;
+      context.fillRect(x + 10, y + 15, 7, 7);
+      context.fillRect(x + 20, y + 15, 7, 7);
+      context.restore();
+    };
+
+    const drawPhaseWall = (
+      cell: Cell,
+      kind: 0 | 1,
+      phase: 0 | 1,
+      alpha = 1,
+    ) => {
+      const x = cell.col * CELL_SIZE;
+      const y = cell.row * CELL_SIZE;
+      const solid = kind === phase;
+      const color = kind === 0 ? "#55f2df" : "#a987ff";
+      context.save();
+      context.globalAlpha = alpha * (solid ? 0.92 : 0.26);
+      context.fillStyle = solid
+        ? kind === 0
+          ? "rgba(23, 118, 110, 0.88)"
+          : "rgba(82, 56, 150, 0.9)"
+        : "rgba(18, 22, 31, 0.22)";
+      context.fillRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+      context.strokeStyle = color;
+      context.lineWidth = solid ? 3 : 1.5;
+      if (!solid) context.setLineDash([4, 4]);
+      context.strokeRect(x + 4, y + 4, CELL_SIZE - 8, CELL_SIZE - 8);
+      if (solid) {
+        context.fillStyle = color;
+        for (let offset = 8; offset < CELL_SIZE - 4; offset += 8) {
+          context.fillRect(x + offset, y + 6, 2, CELL_SIZE - 12);
+        }
+      }
+      context.restore();
+    };
+
     const drawGoal = (cell: Cell, alpha = 1) => {
       const center = cellCenter(cell);
       const pulse = 0.84 + Math.sin(performance.now() / 180) * 0.16;
@@ -831,38 +979,52 @@ export default function Home() {
 
       if (screenRef.current === "playing" && movingRef.current && activeMoveRef.current) {
         const activeMove = activeMoveRef.current;
-        const deltaX = activeMove.target.x - positionRef.current.x;
-        const deltaY = activeMove.target.y - positionRef.current.y;
+        const target = activeMove.targets[activeMove.targetIndex];
+        const deltaX = target.x - positionRef.current.x;
+        const deltaY = target.y - positionRef.current.y;
         const distance = Math.hypot(deltaX, deltaY);
         const travel = MOVE_SPEED * rawDelta;
 
         if (distance <= travel || distance < 0.5) {
-          const landedPosition =
-            activeMove.outcome === "portal" && activeMove.destination
-              ? cellCenter(activeMove.destination)
-              : activeMove.target;
-          positionRef.current = { ...landedPosition };
-          movingRef.current = false;
-          activeMoveRef.current = null;
-          if (activeMove.destination) cellRef.current = { ...activeMove.destination };
-          runStateRef.current = { ...activeMove.nextState };
-          setRunState({ ...activeMove.nextState });
-          if (activeMove.outcome === "goal") finishStage();
-          if (activeMove.outcome === "death") killPlayer();
-          if (activeMove.outcome === "stop") playTone(148, 0.042);
-          if (activeMove.outcome === "portal") {
-            trailRef.current = [];
-            playTone(880, 0.09, "sine");
-            window.setTimeout(() => playTone(1175, 0.08, "sine"), 55);
-          }
-          if (activeMove.outcome === "switch") {
-            playTone(392, 0.08);
-            window.setTimeout(() => playTone(784, 0.12), 70);
-          }
-          if (activeMove.outcome === "break") {
-            setBump(true);
-            playTone(92, 0.11, "sawtooth");
-            window.setTimeout(() => setBump(false), 150);
+          positionRef.current = { ...target };
+          if (activeMove.targetIndex < activeMove.targets.length - 1) {
+            activeMove.targetIndex += 1;
+            playTone(330, 0.045, "triangle");
+          } else {
+            const landedPosition =
+              activeMove.outcome === "portal" && activeMove.destination
+                ? cellCenter(activeMove.destination)
+                : target;
+            positionRef.current = { ...landedPosition };
+            movingRef.current = false;
+            activeMoveRef.current = null;
+            if (activeMove.destination) cellRef.current = { ...activeMove.destination };
+            runStateRef.current = { ...activeMove.nextState };
+            setRunState({ ...activeMove.nextState });
+            if (activeMove.outcome === "goal") finishStage();
+            if (activeMove.outcome === "death") killPlayer();
+            if (activeMove.outcome === "stop") playTone(148, 0.042);
+            if (activeMove.outcome === "portal") {
+              trailRef.current = [];
+              playTone(880, 0.09, "sine");
+              window.setTimeout(() => playTone(1175, 0.08, "sine"), 55);
+            }
+            if (activeMove.outcome === "switch") {
+              playTone(392, 0.08);
+              window.setTimeout(() => playTone(784, 0.12), 70);
+            }
+            if (activeMove.outcome === "phase") {
+              playTone(activeMove.nextState.phase === 1 ? 740 : 440, 0.11, "sine");
+              window.setTimeout(
+                () => playTone(activeMove.nextState.phase === 1 ? 980 : 330, 0.12, "triangle"),
+                70,
+              );
+            }
+            if (activeMove.outcome === "break") {
+              setBump(true);
+              playTone(92, 0.11, "sawtooth");
+              window.setTimeout(() => setBump(false), 150);
+            }
           }
         } else {
           positionRef.current = {
@@ -892,8 +1054,24 @@ export default function Home() {
         }))
         .filter((particle) => particle.life > 0);
 
+      const sceneLevel = screenRef.current === "menu" ? LEVELS[selectedStage] : levelRef.current;
+      const sceneRunState =
+        screenRef.current === "menu" ? INITIAL_RUN_STATE : runStateRef.current;
+      const sceneAlpha = screenRef.current === "menu" ? 0.13 : 1;
+      const planetBackground = ["#050508", "#071014", "#0b0717"][sceneLevel.planet];
+      const planetGlow = [
+        "rgba(27, 46, 44, 0.32)",
+        "rgba(32, 68, 79, 0.38)",
+        "rgba(82, 48, 135, 0.42)",
+      ][sceneLevel.planet];
+      const gridColor = [
+        "rgba(148, 255, 223, 0.055)",
+        "rgba(91, 211, 255, 0.07)",
+        "rgba(186, 160, 255, 0.075)",
+      ][sceneLevel.planet];
+
       context.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-      context.fillStyle = "#050508";
+      context.fillStyle = planetBackground;
       context.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
       const glow = context.createRadialGradient(
@@ -904,22 +1082,18 @@ export default function Home() {
         WORLD_HEIGHT * 0.46,
         WORLD_WIDTH * 0.72,
       );
-      glow.addColorStop(0, "rgba(27, 46, 44, 0.32)");
+      glow.addColorStop(0, planetGlow);
       glow.addColorStop(1, "rgba(4, 4, 8, 0)");
       context.fillStyle = glow;
       context.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-      context.fillStyle = "rgba(148, 255, 223, 0.055)";
+      context.fillStyle = gridColor;
       for (let col = 0; col < GRID_COLS; col += 1) {
         for (let row = 0; row < GRID_ROWS; row += 1) {
           context.fillRect(col * CELL_SIZE + CELL_SIZE / 2, row * CELL_SIZE + CELL_SIZE / 2, 1, 1);
         }
       }
 
-      const sceneLevel = screenRef.current === "menu" ? LEVELS[selectedStage] : levelRef.current;
-      const sceneRunState =
-        screenRef.current === "menu" ? INITIAL_RUN_STATE : runStateRef.current;
-      const sceneAlpha = screenRef.current === "menu" ? 0.13 : 1;
       drawBoundary(screenRef.current === "menu" ? 0.18 : 0.78);
       drawGoal(sceneLevel.goal, sceneAlpha);
       sceneLevel.oneWayCells.forEach((cell) => drawOneWay(cell, sceneAlpha));
@@ -933,7 +1107,41 @@ export default function Home() {
       sceneLevel.fragileCells.forEach((cell, index) =>
         drawFragile(cell, (sceneRunState.brokenMask & (1 << index)) !== 0, sceneAlpha),
       );
-      sceneLevel.blockCells.forEach((block) => drawBlock(block, sceneAlpha));
+      sceneLevel.rotatorCells.forEach((cell) => drawRotator(cell, sceneAlpha));
+      sceneLevel.phaseSwitchCells.forEach((cell) =>
+        drawPhaseSwitch(cell, sceneRunState.phase, sceneAlpha),
+      );
+      sceneLevel.phaseACells.forEach((cell) =>
+        drawPhaseWall(cell, 0, sceneRunState.phase, sceneAlpha),
+      );
+      sceneLevel.phaseBCells.forEach((cell) =>
+        drawPhaseWall(cell, 1, sceneRunState.phase, sceneAlpha),
+      );
+      sceneLevel.blockCells.forEach((block) => drawBlock(block, sceneLevel.planet, sceneAlpha));
+
+      if (hintVisible && screenRef.current === "playing") {
+        const firstMove = slide(
+          sceneLevel,
+          sceneLevel.start,
+          sceneLevel.solution[0],
+          INITIAL_RUN_STATE,
+        );
+        if (firstMove.outcome !== "blocked" && firstMove.outcome !== "death") {
+          const hintTarget = cellCenter(
+            firstMove.outcome === "portal" ? firstMove.entry : firstMove.destination,
+          );
+          const pulse = 13 + Math.sin(performance.now() / 120) * 4;
+          context.save();
+          context.strokeStyle = PLANETS[sceneLevel.planet].secondary;
+          context.lineWidth = 4;
+          context.shadowColor = PLANETS[sceneLevel.planet].secondary;
+          context.shadowBlur = 18;
+          context.beginPath();
+          context.arc(hintTarget.x, hintTarget.y, pulse, 0, Math.PI * 2);
+          context.stroke();
+          context.restore();
+        }
+      }
 
       if (screenRef.current !== "menu") {
         trailRef.current.forEach((trail) => drawAvatar(trail, Math.max(0, trail.life * 0.4)));
@@ -953,7 +1161,7 @@ export default function Home() {
 
     animationFrame = window.requestAnimationFrame(render);
     return () => window.cancelAnimationFrame(animationFrame);
-  }, [finishStage, isDead, killPlayer, playTone, selectedStage]);
+  }, [finishStage, hintVisible, isDead, killPlayer, playTone, selectedStage]);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     touchStartRef.current = { x: event.clientX, y: event.clientY };
@@ -987,23 +1195,84 @@ export default function Home() {
   const selectedLevel = LEVELS[selectedStage];
   const selectedChapterMeta = CHAPTERS[selectedChapter];
   const currentChapterMeta = CHAPTERS[currentLevel.chapter];
-  const visibleLevels = LEVELS.slice(selectedChapter * 5, selectedChapter * 5 + 5);
+  const selectedPlanetMeta = PLANETS[selectedPlanet];
+  const currentPlanetMeta = PLANETS[currentLevel.planet];
+  const visibleLevels = LEVELS.slice(
+    selectedChapter * MAPS_PER_ZONE,
+    selectedChapter * MAPS_PER_ZONE + MAPS_PER_ZONE,
+  );
   const currentChapterLevels = LEVELS.slice(
-    currentLevel.chapter * 5,
-    currentLevel.chapter * 5 + 5,
+    currentLevel.chapter * MAPS_PER_ZONE,
+    currentLevel.chapter * MAPS_PER_ZONE + MAPS_PER_ZONE,
   );
   const isFinalStage = stageIndex === LEVELS.length - 1;
+  const isPlanetFinalStage = currentLevel.localId === MAPS_PER_PLANET;
+  const totalStars = stageBests.reduce<number>(
+    (sum, best, index) => sum + starsFor(best, LEVELS[index].par),
+    0,
+  );
+  const selectedPlanetStars = stageBests
+    .slice(selectedPlanet * MAPS_PER_PLANET, (selectedPlanet + 1) * MAPS_PER_PLANET)
+    .reduce<number>(
+      (sum, best, index) =>
+        sum +
+        starsFor(best, LEVELS[selectedPlanet * MAPS_PER_PLANET + index].par),
+      0,
+    );
 
   const chooseChapter = (chapterIndex: number) => {
-    const firstStage = chapterIndex * 5;
+    const firstStage = chapterIndex * MAPS_PER_ZONE;
     if (firstStage >= unlocked) return;
-    const latestUnlocked = Math.min(firstStage + 4, unlocked - 1);
+    const latestUnlocked = Math.min(firstStage + MAPS_PER_ZONE - 1, unlocked - 1);
     setSelectedChapter(chapterIndex);
     setSelectedStage(Math.max(firstStage, latestUnlocked));
   };
 
+  const choosePlanet = (planetIndex: number) => {
+    const firstStage = planetIndex * MAPS_PER_PLANET;
+    if (firstStage >= unlocked) return;
+    const latestUnlocked = Math.min(firstStage + MAPS_PER_PLANET - 1, unlocked - 1);
+    const nextStage = Math.max(firstStage, latestUnlocked);
+    setSelectedPlanet(planetIndex);
+    setSelectedChapter(Math.floor(nextStage / MAPS_PER_ZONE));
+    setSelectedStage(nextStage);
+  };
+
+  const revealHint = () => {
+    setHintVisible(true);
+    playTone(660, 0.08, "sine");
+    window.setTimeout(() => playTone(880, 0.1, "sine"), 70);
+  };
+
+  const shareResult = async () => {
+    const earnedStars = starsFor(moves, currentLevel.par);
+    const text = [
+      "직진게임 " + currentPlanetMeta.name + " " + currentLevel.localId + "번 맵 클리어!",
+      "이동 " + moves + "회 · " + "★".repeat(earnedStars) + "☆".repeat(3 - earnedStars),
+      "너도 도전해봐!",
+      window.location.href,
+    ].join("\n");
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "직진게임 기록", text });
+        setShareStatus("공유 완료");
+      } else {
+        await navigator.clipboard.writeText(text);
+        setShareStatus("기록 복사 완료");
+      }
+    } catch {
+      setShareStatus("공유가 취소됐어요");
+    }
+  };
+
   return (
-    <main className="site-shell">
+    <main
+      className={
+        "site-shell planet-" +
+        (screen === "menu" ? selectedPlanet + 1 : currentLevel.planet + 1)
+      }
+    >
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
 
@@ -1013,7 +1282,7 @@ export default function Home() {
           STRAIGHT LINE
         </button>
         <div className="topbar-actions">
-          <span className="build-label">30 STAGES · 6 ZONES</span>
+          <span className="build-label">3 PLANETS · 90 MAPS · ★ {totalStars}/270</span>
           <button
             className="icon-button"
             type="button"
@@ -1034,8 +1303,8 @@ export default function Home() {
           <div className="play-status-bar">
             <div className="game-hud" aria-live="polite">
               <div>
-                <span className="hud-label">STAGE</span>
-                <strong>{String(stageIndex + 1).padStart(2, "0")}</strong>
+                <span className="hud-label">MAP</span>
+                <strong>{String(currentLevel.localId).padStart(2, "0")}</strong>
               </div>
               <div className="hud-divider" />
               <div>
@@ -1061,10 +1330,19 @@ export default function Home() {
                   </div>
                 </>
               )}
+              {currentLevel.mechanics.includes("phase") && (
+                <>
+                  <div className="hud-divider hud-phase-divider" />
+                  <div className={"phase-state phase-" + runState.phase}>
+                    <span className="hud-label">PHASE</span>
+                    <strong>{runState.phase === 0 ? "A" : "B"}</strong>
+                  </div>
+                </>
+              )}
             </div>
 
-            <div className="chapter-status" aria-label={`${currentChapterMeta.name} 진행 중`}>
-              <strong>{currentChapterMeta.code}</strong>
+            <div className="chapter-status" aria-label={currentChapterMeta.name + " 진행 중"}>
+              <strong>{currentPlanetMeta.code} · {currentChapterMeta.code}</strong>
               <div className="stage-progress">
                 {currentChapterLevels.map((level) => (
                   <span
@@ -1076,6 +1354,17 @@ export default function Home() {
             </div>
 
             <div className="game-tools">
+              {deaths >= 5 && (
+                <button
+                  className={"hint-tool " + (hintVisible ? "is-active" : "")}
+                  type="button"
+                  onClick={revealHint}
+                  aria-label="첫 이동 힌트 보기"
+                  title="첫 이동 힌트"
+                >
+                  ?
+                </button>
+              )}
               <button type="button" onClick={() => startStage(stageIndexRef.current)} aria-label="현재 단계 다시 시작">
                 ↻
               </button>
@@ -1109,8 +1398,8 @@ export default function Home() {
                   <p className="game-kicker">SLIDE · STOP · SURVIVE</p>
                   <h1>직선 게임</h1>
                   <p className="menu-copy">
-                    듬성듬성한 정지 블록을 골라 긴 직선을 만들고, 위험한 경계와 단계별
-                    기믹을 돌파하세요.
+                    서로 다른 블록과 규칙을 가진 세 행성, 90개 맵을 돌파하세요.
+                    한 방향을 정하면 벽이나 기믹을 만날 때까지 멈출 수 없습니다.
                   </p>
                   <div className="menu-actions">
                     <button className="primary-button" type="button" onClick={() => startStage(selectedStage)}>
@@ -1122,11 +1411,11 @@ export default function Home() {
                     </button>
                   </div>
                   <div className="menu-meta" aria-label="선택한 스테이지 정보">
-                    <span>STAGE {String(selectedStage + 1).padStart(2, "0")}</span>
+                    <span>{selectedPlanetMeta.code} · MAP {String(selectedLevel.localId).padStart(2, "0")}</span>
                     <span className="meta-line" />
                     <span>PAR {selectedLevel.par}</span>
                     <span className="meta-line" />
-                    <span>{selectedChapterMeta.code} · {selectedLevel.name}</span>
+                    <span>★ {selectedPlanetStars}/90 · {selectedLevel.name}</span>
                   </div>
                 </div>
 
@@ -1153,12 +1442,44 @@ export default function Home() {
 
               <div className="stage-selector" aria-label="스테이지 선택">
                 <div className="stage-selector-heading">
-                  <strong>CAMPAIGN SELECT</strong>
-                  <span>{unlocked}/{LEVELS.length} OPEN</span>
+                  <strong>PLANET &amp; MAP SELECT</strong>
+                  <span>{Math.min(MAPS_PER_PLANET, Math.max(0, unlocked - selectedPlanet * MAPS_PER_PLANET))}/{MAPS_PER_PLANET} OPEN · ★ {selectedPlanetStars}/90</span>
+                </div>
+                <div className="planet-tabs" role="tablist" aria-label="행성 선택">
+                  {PLANETS.map((planet, planetIndex) => {
+                    const firstStage = planetIndex * MAPS_PER_PLANET;
+                    const isUnlocked = firstStage < unlocked;
+                    const planetStars = stageBests
+                      .slice(firstStage, firstStage + MAPS_PER_PLANET)
+                      .reduce<number>(
+                        (sum, best, mapIndex) =>
+                          sum + starsFor(best, LEVELS[firstStage + mapIndex].par),
+                        0,
+                      );
+                    return (
+                      <button
+                        key={planet.id}
+                        type="button"
+                        role="tab"
+                        disabled={!isUnlocked}
+                        aria-selected={selectedPlanet === planetIndex}
+                        className={selectedPlanet === planetIndex ? "is-selected" : ""}
+                        onClick={() => choosePlanet(planetIndex)}
+                      >
+                        <span className="planet-orb" aria-hidden="true" />
+                        <span>
+                          <small>PLANET {String(planet.id).padStart(2, "0")}</small>
+                          <strong>{isUnlocked ? planet.name : "잠긴 행성"}</strong>
+                        </span>
+                        <em>{isUnlocked ? "★ " + planetStars + "/90" : "LOCKED"}</em>
+                      </button>
+                    );
+                  })}
                 </div>
                 <div className="chapter-tabs" role="tablist" aria-label="난이도 구역 선택">
-                  {CHAPTERS.map((chapter, chapterIndex) => {
-                    const isUnlocked = chapterIndex * 5 < unlocked;
+                  {CHAPTERS.filter((chapter) => chapter.planet === selectedPlanet).map((chapter) => {
+                    const chapterIndex = chapter.id - 1;
+                    const isUnlocked = chapterIndex * MAPS_PER_ZONE < unlocked;
                     return (
                       <button
                         key={chapter.id}
@@ -1169,7 +1490,7 @@ export default function Home() {
                         className={selectedChapter === chapterIndex ? "is-selected" : ""}
                         onClick={() => chooseChapter(chapterIndex)}
                       >
-                        <span>{String(chapter.id).padStart(2, "0")}</span>
+                        <span>{String(chapter.zone + 1).padStart(2, "0")}</span>
                         <strong>{isUnlocked ? chapter.code : "LOCKED"}</strong>
                       </button>
                     );
@@ -1177,7 +1498,7 @@ export default function Home() {
                 </div>
                 <div className="chapter-summary">
                   <div>
-                    <span>ZONE {String(selectedChapterMeta.id).padStart(2, "0")}</span>
+                    <span>{selectedPlanetMeta.shortName} · ZONE {String(selectedChapterMeta.zone + 1).padStart(2, "0")}</span>
                     <strong>{selectedChapterMeta.name}</strong>
                   </div>
                   <p>{selectedChapterMeta.description}</p>
@@ -1191,6 +1512,7 @@ export default function Home() {
                   {visibleLevels.map((level) => {
                     const index = level.id - 1;
                     const isUnlocked = index < unlocked;
+                    const stars = starsFor(stageBests[index], level.par);
                     return (
                       <button
                         key={level.id}
@@ -1199,23 +1521,23 @@ export default function Home() {
                         className={selectedStage === index ? "is-selected" : ""}
                         aria-label={
                           isUnlocked
-                            ? `${level.id}단계 ${level.name}, 기준 ${level.par}회`
-                            : `${level.id}단계 잠김`
+                            ? level.localId + "번 맵 " + level.name + ", 별 " + stars + "개"
+                            : level.localId + "번 맵 잠김"
                         }
                         onClick={() => setSelectedStage(index)}
                       >
-                        <span className="stage-number">{String(level.id).padStart(2, "0")}</span>
+                        <span className="stage-number">{String(level.localId).padStart(2, "0")}</span>
                         <span className="stage-name">{isUnlocked ? level.name : "LOCKED"}</span>
                         <span className="stage-best">
                           {isUnlocked
                             ? stageBests[index] === null
-                              ? `PAR ${level.par}`
-                              : `BEST ${stageBests[index]}`
+                              ? "PAR " + level.par
+                              : "BEST " + stageBests[index]
                             : "×"}
                         </span>
-                        <span className="difficulty-pips" aria-hidden="true">
-                          {Array.from({ length: 5 }, (_, pip) => (
-                            <i key={pip} className={pip <= index % 5 ? "is-on" : ""} />
+                        <span className="stage-stars" aria-label={stars + "개 별"}>
+                          {Array.from({ length: 3 }, (_, star) => (
+                            <i key={star} className={star < stars ? "is-on" : ""}>★</i>
                           ))}
                         </span>
                       </button>
@@ -1239,15 +1561,24 @@ export default function Home() {
               <div className="win-card">
                 <span className="win-badge">
                   {isFinalStage
-                    ? "ALL 30 STAGES CLEAR"
-                    : (stageIndex + 1) % 5 === 0
+                    ? "ALL 90 MAPS CLEAR"
+                    : isPlanetFinalStage
+                      ? currentPlanetMeta.code + " PLANET COMPLETE"
+                      : currentLevel.localId % MAPS_PER_ZONE === 0
                       ? "ZONE COMPLETE"
-                      : "STAGE CLEAR"}
+                      : "MAP CLEAR"}
                 </span>
                 <h2>{isFinalStage ? "완주!" : "클리어!"}</h2>
                 <p className="cleared-stage-name">
-                  {String(stageIndex + 1).padStart(2, "0")} · {currentLevel.name}
+                  {currentPlanetMeta.name} · MAP {String(currentLevel.localId).padStart(2, "0")} · {currentLevel.name}
                 </p>
+                <div className="win-stars" aria-label={starsFor(moves, currentLevel.par) + "개 별"}>
+                  {Array.from({ length: 3 }, (_, star) => (
+                    <span key={star} className={star < starsFor(moves, currentLevel.par) ? "is-on" : ""}>
+                      ★
+                    </span>
+                  ))}
+                </div>
                 <p className="win-score">
                   <strong>{moves}</strong>
                   <span>번 만에 도착 · PAR {currentLevel.par}</span>
@@ -1268,9 +1599,13 @@ export default function Home() {
                     {isFinalStage ? "1단계부터" : "다음 스테이지"}
                   </button>
                   <button className="secondary-button" type="button" onClick={returnToMenu}>
-                    스테이지 선택
+                    맵 선택
+                  </button>
+                  <button className="share-button" type="button" onClick={shareResult}>
+                    기록 공유
                   </button>
                 </div>
+                {shareStatus && <p className="share-status" role="status">{shareStatus}</p>}
               </div>
             </div>
           )}
@@ -1284,6 +1619,14 @@ export default function Home() {
             <span className="key">→</span>
             <span>또는 WASD로 이동</span>
           </p>
+
+          {screen === "playing" && hintVisible && (
+            <p className="footer-hint" role="status">
+              <span>FIRST MOVE</span>
+              <strong>{DIRECTION_LABEL[currentLevel.solution[0]]}</strong>
+              <small>빛나는 정지점을 이용하세요</small>
+            </p>
+          )}
 
           {screen === "playing" && (
             <div className="d-pad" aria-label="방향 조작 버튼">
@@ -1300,8 +1643,8 @@ export default function Home() {
       </section>
 
       <footer className="site-footer">
-        <span>23×15 GRID · 0.95 PLAYER · 30 VERIFIED MAPS</span>
-        <span>5단계마다 새로운 규칙이 추가됩니다</span>
+        <span>23×15 GRID · 0.95 PLAYER · 90 VERIFIED MAPS</span>
+        <span>3개 행성 · 맵마다 별 3개 · 최고 기록 저장</span>
       </footer>
 
       {showHelp && (
@@ -1343,15 +1686,29 @@ export default function Home() {
               <article>
                 <span>04</span>
                 <div>
-                  <h3>새 타일의 색을 기억하세요</h3>
-                  <p>파랑은 일방통행, 보라는 워프, 주황은 스위치와 문, 금이 간 분홍 블록은 한 번 부딪혀 부술 수 있습니다.</p>
+                  <h3>행성마다 블록과 새 규칙이 달라집니다</h3>
+                  <p>아르코의 기존 30개 맵 뒤에 회전 패드의 기어라, 두 색 위상 벽의 프리즘이 이어집니다.</p>
                 </div>
               </article>
               <article>
                 <span>05</span>
                 <div>
-                  <h3>30단계를 차례로 완주하세요</h3>
-                  <p>5단계마다 새 구역이 열립니다. 모든 맵은 최단 8~34회 경로와 필수 기믹 사용을 자동 검증했습니다.</p>
+                  <h3>기록을 줄여 별 3개를 모으세요</h3>
+                  <p>최단 이동은 별 3개, 최단보다 2회 이내는 별 2개, 클리어하면 별 1개를 받습니다.</p>
+                </div>
+              </article>
+              <article>
+                <span>06</span>
+                <div>
+                  <h3>막히면 첫 이동 힌트를 쓰세요</h3>
+                  <p>같은 맵에서 경계에 5번 부딪히면 상단의 ? 버튼으로 첫 방향과 첫 정지점을 볼 수 있습니다.</p>
+                </div>
+              </article>
+              <article>
+                <span>07</span>
+                <div>
+                  <h3>90개 맵은 모두 자동 검증됐습니다</h3>
+                  <p>각 맵의 최단 경로와 행성별 필수 기믹 사용 여부를 게임이 시작될 때 다시 확인합니다.</p>
                 </div>
               </article>
             </div>
