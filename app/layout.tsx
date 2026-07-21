@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "직진게임 · 3개 행성 90개 맵",
+  title: "직진 게임 · 3개 행성 90개 맵",
   description: "벽과 행성별 기믹을 이용해 목적지에 도달하는 직선 이동 퍼즐 게임",
   other: {
     "codex-preview": "development",
