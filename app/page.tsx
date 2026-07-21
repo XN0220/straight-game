@@ -1247,7 +1247,7 @@ export default function Home() {
   const shareResult = async () => {
     const earnedStars = starsFor(moves, currentLevel.par);
     const text = [
-      "직진게임 " + currentPlanetMeta.name + " " + currentLevel.localId + "번 맵 클리어!",
+      "직진 게임 " + currentPlanetMeta.name + " " + currentLevel.localId + "번 맵 클리어!",
       "이동 " + moves + "회 · " + "★".repeat(earnedStars) + "☆".repeat(3 - earnedStars),
       "너도 도전해봐!",
       window.location.href,
@@ -1255,7 +1255,7 @@ export default function Home() {
 
     try {
       if (navigator.share) {
-        await navigator.share({ title: "직진게임 기록", text });
+        await navigator.share({ title: "직진 게임 기록", text });
         setShareStatus("공유 완료");
       } else {
         await navigator.clipboard.writeText(text);
@@ -1279,7 +1279,7 @@ export default function Home() {
       <header className="topbar">
         <button className="wordmark" type="button" onClick={returnToMenu}>
           <span className="wordmark-dot" aria-hidden="true" />
-          STRAIGHT LINE
+          직진 게임
         </button>
         <div className="topbar-actions">
           <span className="build-label">3 PLANETS · 90 MAPS · ★ {totalStars}/270</span>
@@ -1298,7 +1298,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="game-wrap" aria-label="직선 게임">
+      <section className="game-wrap" aria-label="직진 게임">
         {screen !== "menu" && (
           <div className="play-status-bar">
             <div className="game-hud" aria-live="polite">
@@ -1396,7 +1396,7 @@ export default function Home() {
               <div className="menu-layout">
                 <div className="menu-intro">
                   <p className="game-kicker">SLIDE · STOP · SURVIVE</p>
-                  <h1>직선 게임</h1>
+                  <h1>직진 게임</h1>
                   <p className="menu-copy">
                     서로 다른 블록과 규칙을 가진 세 행성, 90개 맵을 돌파하세요.
                     한 방향을 정하면 벽이나 기믹을 만날 때까지 멈출 수 없습니다.
