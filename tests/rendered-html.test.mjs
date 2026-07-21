@@ -35,6 +35,8 @@ test("renders development preview metadata", async () => {
 
 test("renders the three-planet campaign shell", async () => {
   const html = await renderHome();
+  assert.match(html, /직진 게임/);
+  assert.doesNotMatch(html, /직선 게임|직진게임/);
   assert.match(html, /3 PLANETS/);
   assert.match(html, /90 VERIFIED MAPS/);
   assert.match(html, /벽돌 행성 아르코/);
