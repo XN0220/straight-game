@@ -43,13 +43,17 @@ type ActiveMove = {
 
 const AVATAR_GRID = 10;
 const AVATAR_STORAGE_KEY = "straight-line-avatar-v2";
-const UNLOCK_STORAGE_KEY = "straight-line-unlocked-v6";
-const BEST_STORAGE_KEY = "straight-line-bests-v6";
-const PREVIOUS_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v5";
-const PREVIOUS_BEST_STORAGE_KEY = "straight-line-bests-v5";
+const UNLOCK_STORAGE_KEY = "straight-line-unlocked-v7";
+const BEST_STORAGE_KEY = "straight-line-bests-v7";
+const LAST_STAGE_STORAGE_KEY = "straight-line-last-stage-v7";
+const PREVIOUS_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v6";
+const PREVIOUS_BEST_STORAGE_KEY = "straight-line-bests-v6";
+const OLDER_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v5";
+const OLDER_BEST_STORAGE_KEY = "straight-line-bests-v5";
 const LEGACY_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v2";
 const LEGACY_BEST_STORAGE_KEY = "straight-line-bests-v2";
 const MOVE_SPEED = 680;
+const TRAINING_SCENE_SCALE = 1.5;
 
 const DIRECTION_LABEL: Record<Direction, string> = {
   up: "↑ 위",
@@ -343,7 +347,9 @@ export default function Home() {
   const [moves, setMoves] = useState(0);
   const [deaths, setDeaths] = useState(0);
   const [runState, setRunState] = useState<RunState>({ ...INITIAL_RUN_STATE });
-  const [unlocked, setUnlocked] = useState(1);
+  const [planetUnlocks, setPlanetUnlocks] = useState<number[]>(
+    PLANETS.map(() => 1),
+  );
   const [stageBests, setStageBests] = useState<Array<number | null>>(
     Array(LEVELS.length).fill(null),
   );
@@ -375,52 +381,97 @@ export default function Home() {
         setDraftPixels(storedAvatar);
       }
 
-      const currentUnlocked = window.localStorage.getItem(UNLOCK_STORAGE_KEY);
+      const currentUnlocks = JSON.parse(
+        window.localStorage.getItem(UNLOCK_STORAGE_KEY) ?? "null",
+      );
       const previousUnlocked = window.localStorage.getItem(PREVIOUS_UNLOCK_STORAGE_KEY);
+      const olderUnlocked = window.localStorage.getItem(OLDER_UNLOCK_STORAGE_KEY);
       const legacyUnlocked = Number(
         window.localStorage.getItem(LEGACY_UNLOCK_STORAGE_KEY) ?? "1",
       );
       const legacyBests = JSON.parse(
         window.localStorage.getItem(LEGACY_BEST_STORAGE_KEY) ?? "null",
       );
-      let unlockedValue = Number(currentUnlocked ?? 1) || 1;
-      if (currentUnlocked === null && previousUnlocked !== null) {
-        unlockedValue = MAPS_PER_PLANET + (Number(previousUnlocked) || 1);
-      } else if (currentUnlocked === null && legacyUnlocked > 1) {
+      let unlockedValue = 1;
+      if (previousUnlocked !== null) {
+        unlockedValue = Number(previousUnlocked) || 1;
+      } else if (olderUnlocked !== null) {
+        unlockedValue = MAPS_PER_PLANET + (Number(olderUnlocked) || 1);
+      } else if (legacyUnlocked > 1) {
         unlockedValue = MAPS_PER_PLANET + legacyUnlocked;
       }
       if (
-        currentUnlocked === null &&
         previousUnlocked === null &&
+        olderUnlocked === null &&
         legacyUnlocked >= 5 &&
         Array.isArray(legacyBests) &&
         typeof legacyBests[4] === "number"
       ) {
         unlockedValue = MAPS_PER_PLANET + 6;
       }
-      const safeUnlocked = Math.max(1, Math.min(LEVELS.length, unlockedValue));
-      setUnlocked(safeUnlocked);
-      setSelectedStage(safeUnlocked - 1);
-      setSelectedChapter(Math.floor((safeUnlocked - 1) / 5));
-      setSelectedPlanet(Math.floor((safeUnlocked - 1) / MAPS_PER_PLANET));
-      window.localStorage.setItem(UNLOCK_STORAGE_KEY, String(safeUnlocked));
+      const safeUnlocks =
+        Array.isArray(currentUnlocks) &&
+        currentUnlocks.length === PLANETS.length &&
+        currentUnlocks.every((value) => typeof value === "number")
+          ? currentUnlocks.map((value) =>
+              Math.max(1, Math.min(MAPS_PER_PLANET, Math.floor(value))),
+            )
+          : PLANETS.map((_, planetIndex) =>
+              Math.max(
+                1,
+                Math.min(MAPS_PER_PLANET, unlockedValue - planetIndex * MAPS_PER_PLANET),
+              ),
+            );
+      setPlanetUnlocks(safeUnlocks);
+      window.localStorage.setItem(UNLOCK_STORAGE_KEY, JSON.stringify(safeUnlocks));
+
+      const storedLastStage = Number(
+        window.localStorage.getItem(LAST_STAGE_STORAGE_KEY) ?? "-1",
+      );
+      const migratedLastStage = Math.max(
+        0,
+        Math.min(LEVELS.length - 1, unlockedValue - 1),
+      );
+      const lastStagePlanet = Math.floor(storedLastStage / MAPS_PER_PLANET);
+      const lastStageLocal = storedLastStage % MAPS_PER_PLANET;
+      const canRestoreLastStage =
+        storedLastStage >= 0 &&
+        storedLastStage < LEVELS.length &&
+        lastStageLocal < (safeUnlocks[lastStagePlanet] ?? 1);
+      const initialStage = canRestoreLastStage ? storedLastStage : migratedLastStage;
+      setSelectedStage(initialStage);
+      setSelectedChapter(Math.floor(initialStage / MAPS_PER_ZONE));
+      setSelectedPlanet(Math.floor(initialStage / MAPS_PER_PLANET));
 
       const storedBests = JSON.parse(window.localStorage.getItem(BEST_STORAGE_KEY) ?? "null");
       const previousBests = JSON.parse(
         window.localStorage.getItem(PREVIOUS_BEST_STORAGE_KEY) ?? "null",
       );
+      const olderBests = JSON.parse(
+        window.localStorage.getItem(OLDER_BEST_STORAGE_KEY) ?? "null",
+      );
       if (Array.isArray(storedBests) && storedBests.length === LEVELS.length) {
         setStageBests(storedBests.map((best) => (typeof best === "number" ? best : null)));
       } else {
         const migratedBests = Array<number | null>(LEVELS.length).fill(null);
-        const sourceBests = Array.isArray(previousBests)
-          ? previousBests
-          : Array.isArray(legacyBests)
-            ? legacyBests
-            : [];
-        sourceBests.slice(0, MAPS_PER_PLANET * 3).forEach((best, index) => {
-          if (typeof best === "number") migratedBests[index + MAPS_PER_PLANET] = best;
-        });
+        if (Array.isArray(previousBests) && previousBests.length === LEVELS.length) {
+          previousBests
+            .slice(MAPS_PER_PLANET)
+            .forEach((best, index) => {
+              if (typeof best === "number") {
+                migratedBests[index + MAPS_PER_PLANET] = best;
+              }
+            });
+        } else {
+          const sourceBests = Array.isArray(olderBests)
+            ? olderBests
+            : Array.isArray(legacyBests)
+              ? legacyBests
+              : [];
+          sourceBests.slice(0, MAPS_PER_PLANET * 3).forEach((best, index) => {
+            if (typeof best === "number") migratedBests[index + MAPS_PER_PLANET] = best;
+          });
+        }
         setStageBests(migratedBests);
         window.localStorage.setItem(BEST_STORAGE_KEY, JSON.stringify(migratedBests));
       }
@@ -487,6 +538,7 @@ export default function Home() {
       setSelectedStage(safeIndex);
       setSelectedChapter(Math.floor(safeIndex / 5));
       setSelectedPlanet(Math.floor(safeIndex / MAPS_PER_PLANET));
+      window.localStorage.setItem(LAST_STAGE_STORAGE_KEY, String(safeIndex));
       setMoves(0);
       setDeaths(0);
       setRunState({ ...INITIAL_RUN_STATE });
@@ -499,6 +551,11 @@ export default function Home() {
     },
     [setGameScreen],
   );
+
+  const startNextStage = useCallback(() => {
+    const next = stageIndexRef.current + 1;
+    startStage(next < LEVELS.length ? next : 0);
+  }, [startStage]);
 
   const restartAfterDeath = useCallback(() => {
     const level = levelRef.current;
@@ -558,10 +615,15 @@ export default function Home() {
       return next;
     });
 
-    if (index < LEVELS.length - 1) {
-      setUnlocked((previous) => {
-        const next = Math.max(previous, index + 2);
-        window.localStorage.setItem(UNLOCK_STORAGE_KEY, String(next));
+    const clearedLevel = LEVELS[index];
+    if (clearedLevel.localId < MAPS_PER_PLANET) {
+      setPlanetUnlocks((previous) => {
+        const next = [...previous];
+        next[clearedLevel.planet] = Math.max(
+          next[clearedLevel.planet] ?? 1,
+          clearedLevel.localId + 1,
+        );
+        window.localStorage.setItem(UNLOCK_STORAGE_KEY, JSON.stringify(next));
         return next;
       });
     }
@@ -649,16 +711,13 @@ export default function Home() {
       if (event.key === "Escape") returnToMenu();
       if (event.key === "Enter") {
         if (screenRef.current === "menu") startStage(selectedStage);
-        else if (screenRef.current === "won") {
-          const next = stageIndexRef.current + 1;
-          startStage(next < LEVELS.length ? next : 0);
-        }
+        else if (screenRef.current === "won") startNextStage();
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [returnToMenu, selectedStage, showEditor, showHelp, startStage]);
+  }, [returnToMenu, selectedStage, showEditor, showHelp, startNextStage, startStage]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1105,6 +1164,15 @@ export default function Home() {
       context.fillStyle = glow;
       context.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
+      drawBoundary(sceneLevel.planet, screenRef.current === "menu" ? 0.18 : 0.78);
+
+      context.save();
+      if (sceneLevel.planet === 0) {
+        context.translate(WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
+        context.scale(TRAINING_SCENE_SCALE, TRAINING_SCENE_SCALE);
+        context.translate(-WORLD_WIDTH / 2, -WORLD_HEIGHT / 2);
+      }
+
       context.fillStyle = gridColor;
       for (let col = 0; col < GRID_COLS; col += 1) {
         for (let row = 0; row < GRID_ROWS; row += 1) {
@@ -1112,7 +1180,6 @@ export default function Home() {
         }
       }
 
-      drawBoundary(sceneLevel.planet, screenRef.current === "menu" ? 0.18 : 0.78);
       drawGoal(sceneLevel.goal, sceneAlpha);
       sceneLevel.oneWayCells.forEach((cell) => drawOneWay(cell, sceneAlpha));
       sceneLevel.portals.forEach((cell, index) => drawPortal(cell, index, sceneAlpha));
@@ -1173,6 +1240,7 @@ export default function Home() {
         context.fillRect(particle.x, particle.y, 6, 6);
         context.restore();
       });
+      context.restore();
 
       animationFrame = window.requestAnimationFrame(render);
     };
@@ -1237,20 +1305,32 @@ export default function Home() {
         starsFor(best, LEVELS[selectedPlanet * MAPS_PER_PLANET + index].par),
       0,
     );
+  const selectedPlanetOpenCount = planetUnlocks[selectedPlanet] ?? 1;
+  const isStageUnlocked = (index: number) => {
+    const planetIndex = Math.floor(index / MAPS_PER_PLANET);
+    const localIndex = index % MAPS_PER_PLANET;
+    return localIndex < (planetUnlocks[planetIndex] ?? 1);
+  };
 
   const chooseChapter = (chapterIndex: number) => {
-    const firstStage = chapterIndex * MAPS_PER_ZONE;
-    if (firstStage >= unlocked) return;
-    const latestUnlocked = Math.min(firstStage + MAPS_PER_ZONE - 1, unlocked - 1);
+    const chapterMeta = CHAPTERS[chapterIndex];
+    const planetFirstStage = chapterMeta.planet * MAPS_PER_PLANET;
+    const chapterFirstLocalStage = chapterMeta.zone * MAPS_PER_ZONE;
+    const openCount = planetUnlocks[chapterMeta.planet] ?? 1;
+    if (chapterFirstLocalStage >= openCount) return;
+    const latestUnlocked =
+      planetFirstStage +
+      Math.min(chapterFirstLocalStage + MAPS_PER_ZONE - 1, openCount - 1);
     setSelectedChapter(chapterIndex);
-    setSelectedStage(Math.max(firstStage, latestUnlocked));
+    setSelectedStage(
+      Math.max(planetFirstStage + chapterFirstLocalStage, latestUnlocked),
+    );
   };
 
   const choosePlanet = (planetIndex: number) => {
     const firstStage = planetIndex * MAPS_PER_PLANET;
-    if (firstStage >= unlocked) return;
-    const latestUnlocked = Math.min(firstStage + MAPS_PER_PLANET - 1, unlocked - 1);
-    const nextStage = Math.max(firstStage, latestUnlocked);
+    const openCount = planetUnlocks[planetIndex] ?? 1;
+    const nextStage = firstStage + Math.max(0, openCount - 1);
     setSelectedPlanet(planetIndex);
     setSelectedChapter(Math.floor(nextStage / MAPS_PER_ZONE));
     setSelectedStage(nextStage);
@@ -1439,7 +1519,7 @@ export default function Home() {
               <div className="stage-selector" aria-label="난이도와 스테이지 선택">
                 <div className="stage-selector-heading">
                   <strong>DIFFICULTY &amp; MAP SELECT</strong>
-                  <span>{Math.min(MAPS_PER_PLANET, Math.max(0, unlocked - selectedPlanet * MAPS_PER_PLANET))}/{MAPS_PER_PLANET} OPEN · ★ {selectedPlanetStars}/90</span>
+                  <span>{selectedPlanetOpenCount}/{MAPS_PER_PLANET} OPEN · ★ {selectedPlanetStars}/90</span>
                 </div>
                 <div className="difficulty-worlds">
                   {[
@@ -1455,7 +1535,7 @@ export default function Home() {
                         {group.worlds.map((planet) => {
                           const planetIndex = PLANETS.indexOf(planet);
                           const firstStage = planetIndex * MAPS_PER_PLANET;
-                          const isUnlocked = firstStage < unlocked;
+                          const isUnlocked = (planetUnlocks[planetIndex] ?? 1) >= 1;
                           const planetStars = stageBests
                             .slice(firstStage, firstStage + MAPS_PER_PLANET)
                             .reduce<number>(
@@ -1493,7 +1573,8 @@ export default function Home() {
                 <div className="chapter-tabs" role="tablist" aria-label="난이도 구역 선택">
                   {CHAPTERS.filter((chapter) => chapter.planet === selectedPlanet).map((chapter) => {
                     const chapterIndex = chapter.id - 1;
-                    const isUnlocked = chapterIndex * MAPS_PER_ZONE < unlocked;
+                    const isUnlocked =
+                      chapter.zone * MAPS_PER_ZONE < selectedPlanetOpenCount;
                     return (
                       <button
                         key={chapter.id}
@@ -1525,7 +1606,7 @@ export default function Home() {
                 <div className="stage-list">
                   {visibleLevels.map((level) => {
                     const index = level.id - 1;
-                    const isUnlocked = index < unlocked;
+                    const isUnlocked = isStageUnlocked(index);
                     const stars = starsFor(stageBests[index], level.par);
                     return (
                       <button
@@ -1610,7 +1691,7 @@ export default function Home() {
                   <button
                     className="primary-button"
                     type="button"
-                    onClick={() => startStage(isFinalStage ? 0 : stageIndex + 1)}
+                    onClick={startNextStage}
                   >
                     {isFinalStage ? "1단계부터" : "다음 스테이지"}
                   </button>
@@ -1698,8 +1779,8 @@ export default function Home() {
               <article>
                 <span>04</span>
                 <div>
-                  <h3>지구 훈련 후 행성 탐사가 시작됩니다</h3>
-                  <p>작은 연구실의 쉬움 30개를 거치면 아르코·기어라·프리즘의 보통 난이도 90개가 이어집니다.</p>
+                  <h3>지구에서 기믹을 연습하고 행성을 골라 탐사하세요</h3>
+                  <p>연구실 30개 맵에서 일방통행·워프·게이트·회전·위상을 익힐 수 있고, 보통 난이도의 세 행성은 1번 맵부터 자유롭게 시작할 수 있습니다.</p>
                 </div>
               </article>
               <article>
