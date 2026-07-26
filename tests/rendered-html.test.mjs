@@ -35,6 +35,19 @@ test("renders development preview metadata", async () => {
   assert.match(await renderHome(), developmentPreviewMeta);
 });
 
+test("disables stale development caches without deleting game progress", async () => {
+  const html = await renderHome();
+  assert.match(
+    html,
+    /http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/i,
+  );
+  assert.match(html, /http-equiv="Pragma" content="no-cache"/i);
+  assert.match(html, /data-development-cache-reset="straight-game"/);
+  assert.match(html, /navigator\.serviceWorker\.getRegistrations/);
+  assert.match(html, /cache\.delete\(request\)/);
+  assert.doesNotMatch(html, /localStorage\.clear/);
+});
+
 test("renders share preview metadata", async () => {
   const html = await renderHome();
   assert.match(html, /property="og:title" content="직진 게임"/);

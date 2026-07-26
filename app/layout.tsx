@@ -2,6 +2,66 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+const DEVELOPMENT_CACHE_RESET_SCRIPT = String.raw`
+(() => {
+  const GAME_PATH = "/straight-game/";
+  const GAME_CACHE_NAME = /(straight[-_ ]?(?:line[-_ ]?)?game|workbox)/i;
+
+  const isGameRequest = (request) => {
+    try {
+      return new URL(request.url).pathname.startsWith(GAME_PATH);
+    } catch {
+      return false;
+    }
+  };
+
+  const clearDevelopmentCaches = async () => {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(
+        registrations
+          .filter((registration) => {
+            try {
+              return new URL(registration.scope).pathname.startsWith(GAME_PATH);
+            } catch {
+              return false;
+            }
+          })
+          .map((registration) => registration.unregister()),
+      );
+    }
+
+    if ("caches" in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map(async (cacheName) => {
+          const cache = await caches.open(cacheName);
+          const requests = await cache.keys();
+          await Promise.all(
+            requests
+              .filter(isGameRequest)
+              .map((request) => cache.delete(request)),
+          );
+
+          const remainingRequests = await cache.keys();
+          if (remainingRequests.length === 0 && GAME_CACHE_NAME.test(cacheName)) {
+            await caches.delete(cacheName);
+          }
+        }),
+      );
+    }
+  };
+
+  window.addEventListener(
+    "load",
+    () => {
+      void clearDevelopmentCaches();
+    },
+    { once: true },
+  );
+})();
+`;
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -57,6 +117,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
+      <head>
+        <meta
+          httpEquiv="Cache-Control"
+          content="no-cache, no-store, must-revalidate"
+        />
+        <meta httpEquiv="Pragma" content="no-cache" />
+        <meta httpEquiv="Expires" content="0" />
+        <script
+          data-development-cache-reset="straight-game"
+          dangerouslySetInnerHTML={{ __html: DEVELOPMENT_CACHE_RESET_SCRIPT }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
