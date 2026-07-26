@@ -3,6 +3,8 @@ import test from "node:test";
 
 const developmentPreviewMeta =
   /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
+const socialPreviewUrl =
+  "https://xn0220.github.io/straight-game/social-preview.jpg";
 
 async function renderHome() {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -31,6 +33,20 @@ async function renderHome() {
 
 test("renders development preview metadata", async () => {
   assert.match(await renderHome(), developmentPreviewMeta);
+});
+
+test("renders share preview metadata", async () => {
+  const html = await renderHome();
+  assert.match(html, /property="og:title" content="직진 게임"/);
+  assert.match(html, /property="og:type" content="website"/);
+  assert.match(
+    html,
+    new RegExp(
+      `property="og:image" content="${socialPreviewUrl.replaceAll(".", "\\.")}"`,
+    ),
+  );
+  assert.match(html, /name="twitter:card" content="summary_large_image"/);
+  assert.match(html, /rel="canonical" href="https:\/\/xn0220\.github\.io\/straight-game\/"/);
 });
 
 test("renders the Earth training and three-planet campaign shell", async () => {

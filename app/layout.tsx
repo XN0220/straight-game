@@ -13,8 +13,34 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "직진 게임 · 3개 행성 90개 맵",
-  description: "벽과 행성별 기믹을 이용해 목적지에 도달하는 직선 이동 퍼즐 게임",
+  metadataBase: new URL("https://xn0220.github.io"),
+  title: "직진 게임 · 지구 훈련과 3개 행성 120개 맵",
+  description: "멈출 수 없는 직진 퍼즐. 지구에서 훈련하고 3개 행성을 탐사하세요!",
+  alternates: {
+    canonical: "/straight-game/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    url: "https://xn0220.github.io/straight-game/",
+    siteName: "직진 게임",
+    title: "직진 게임",
+    description: "멈추지 마세요. 목표는 하나! 지구에서 훈련하고 우주를 탐사하세요.",
+    images: [
+      {
+        url: "https://xn0220.github.io/straight-game/social-preview.jpg",
+        width: 1731,
+        height: 909,
+        alt: "벽돌 우주 맵과 직진하는 민트색 캐릭터가 그려진 직진 게임",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "직진 게임",
+    description: "멈추지 마세요. 목표는 하나! 지구에서 훈련하고 우주를 탐사하세요.",
+    images: ["https://xn0220.github.io/straight-game/social-preview.jpg"],
+  },
   other: {
     "codex-preview": "development",
   },
