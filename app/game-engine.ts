@@ -1,5 +1,6 @@
 import { CAMPAIGN_ROWS } from "./campaign-data";
 import { EXPANSION_ROWS } from "./expansion-data";
+import { TRAINING_ROWS } from "./training-data";
 
 export type Direction = "up" | "down" | "left" | "right";
 export type Cell = { col: number; row: number };
@@ -20,6 +21,8 @@ export type Planet = {
   shortName: string;
   description: string;
   mechanic: string;
+  difficulty: "쉬움" | "보통";
+  location: "훈련 시설" | "탐사 행성";
   accent: string;
   secondary: string;
 };
@@ -121,31 +124,49 @@ export const INITIAL_RUN_STATE: RunState = {
 export const PLANETS: Planet[] = [
   {
     id: 1,
+    code: "EARTH-LAB",
+    name: "지구 궤도 연구실",
+    shortName: "지구 연구실",
+    description: "작은 실험실에서 직진·정지·경계 회피를 차근차근 배우는 훈련 과정",
+    mechanic: "기초 조종 훈련",
+    difficulty: "쉬움",
+    location: "훈련 시설",
+    accent: "#2377d5",
+    secondary: "#19a78f",
+  },
+  {
+    id: 2,
     code: "ARCO",
     name: "벽돌 행성 아르코",
     shortName: "아르코",
     description: "기존 30개 맵이 그대로 이어지는 붉은 벽돌 행성",
     mechanic: "기본 기믹 종합",
+    difficulty: "보통",
+    location: "탐사 행성",
     accent: "#ff5d78",
     secondary: "#74efc2",
   },
   {
-    id: 2,
+    id: 3,
     code: "GEARA",
     name: "기계 행성 기어라",
     shortName: "기어라",
     description: "금속 블록과 90도 회전 패드가 궤도를 꺾는 산업 행성",
     mechanic: "시계 방향 회전",
+    difficulty: "보통",
+    location: "탐사 행성",
     accent: "#ffd166",
     secondary: "#5bd3ff",
   },
   {
-    id: 3,
+    id: 4,
     code: "PRISM",
     name: "수정 행성 프리즘",
     shortName: "프리즘",
     description: "청록·보라 위상 벽을 번갈아 통과하는 수정 행성",
     mechanic: "위상 전환",
+    difficulty: "보통",
+    location: "탐사 행성",
     accent: "#a987ff",
     secondary: "#55f2df",
   },
@@ -165,7 +186,7 @@ function chapter(
   return { id, planet, zone, code, name, range, description, mechanics, accent };
 }
 
-export const CHAPTERS: Chapter[] = [
+const SPACE_CHAPTERS: Chapter[] = [
   chapter(1, 0, 0, "BASIC", "기본 궤도", "PAR 8–12", "정지 블록에서 멈추는 감각과 위험한 경계를 익히는 구역", ["벽돌", "위험 경계"], "#74efc2"),
   chapter(2, 0, 1, "DETOUR", "우회 구역", "PAR 12–16", "넓은 공간의 정지점을 골라 긴 우회 궤도를 만드는 구역", ["미끼 정지점", "다중 선택"], "#ffd166"),
   chapter(3, 0, 2, "ONE-WAY", "화살표 구역", "PAR 16–20", "표시된 방향으로만 통과할 수 있는 일방통행 구역", ["일방통행", "역방향 차단"], "#5bd3ff"),
@@ -184,6 +205,20 @@ export const CHAPTERS: Chapter[] = [
   chapter(16, 2, 3, "RESONATE", "회전 공명", "PAR 16–20", "이전 행성의 회전 패드가 위상 장벽과 함께 돌아옵니다", ["위상 전환", "회전 패드"], "#8fa4ff"),
   chapter(17, 2, 4, "PHASE-5", "불안정 파장", "PAR 19–23", "두 스위치와 회전 패드가 매 이동의 결과를 바꿉니다", ["다중 스위치", "회전 연계"], "#a987ff"),
   chapter(18, 2, 5, "PRISM-CORE", "프리즘 코어", "PAR 22–28", "두 행성의 신규 규칙을 결합한 마지막 5개 맵", ["위상 전환", "회전 패드", "최장 궤도"], "#c878ff"),
+];
+
+export const CHAPTERS: Chapter[] = [
+  chapter(1, 0, 0, "LAB-1", "직진 기초", "PAR 1–2", "한 방향을 누르면 벽까지 직진한다는 기본 규칙을 배우는 구역", ["작은 연구실", "한 번 이동"], "#2377d5"),
+  chapter(2, 0, 1, "LAB-2", "정지 연습", "PAR 2–3", "파란 실험 블록을 정지점으로 삼아 방향을 바꾸는 구역", ["정지 블록", "방향 전환"], "#278bd7"),
+  chapter(3, 0, 2, "LAB-3", "모서리 훈련", "PAR 3–4", "연구실 모서리와 여러 정지점을 차례로 활용하는 구역", ["모서리", "경로 읽기"], "#22a4c7"),
+  chapter(4, 0, 3, "LAB-4", "선택 훈련", "PAR 4–5", "여러 블록 중 다음 이동에 필요한 정지점을 고르는 구역", ["정지점 선택", "짧은 우회"], "#19a78f"),
+  chapter(5, 0, 4, "LAB-5", "생존 훈련", "PAR 4–5", "열린 실험실 출구를 피해 안전한 벽으로 이동하는 구역", ["위험 경계", "안전한 벽"], "#e9a23b"),
+  chapter(6, 0, 5, "LAUNCH", "탐사 준비", "PAR 5–6", "작은 연구실에서 배운 규칙을 연결하는 마지막 모의 탐사", ["종합 훈련", "우주 출발"], "#ef6b5b"),
+  ...SPACE_CHAPTERS.map((item) => ({
+    ...item,
+    id: item.id + ZONES_PER_PLANET,
+    planet: item.planet + 1,
+  })),
 ];
 
 export const DIRECTIONS: Direction[] = ["up", "down", "left", "right"];
@@ -508,7 +543,8 @@ function measureSolution(
 }
 
 function requiredFeatures(planet: number, zone: number) {
-  if (planet === 0) {
+  if (planet === 0) return 0;
+  if (planet === 1) {
     if (zone === 2) return FEATURE.oneWay;
     if (zone === 3) return FEATURE.oneWay | FEATURE.portal;
     if (zone === 4) return FEATURE.oneWay | FEATURE.portal | FEATURE.switch | FEATURE.gate;
@@ -524,7 +560,7 @@ function requiredFeatures(planet: number, zone: number) {
     }
     return 0;
   }
-  if (planet === 1) return FEATURE.rotator;
+  if (planet === 2) return FEATURE.rotator;
   return FEATURE.phaseSwitch | FEATURE.phaseGate | (zone >= 3 ? FEATURE.rotator : 0);
 }
 
@@ -646,10 +682,10 @@ function buildLevel(stage: RawStage): Level {
   }
   const movement = measureSolution(base, solved.path);
   const minimumLongMoves = Math.max(
-    planet === 0 ? 3 : 2,
-    Math.floor(expectedPar * (planet === 0 ? 0.3 : 0.24)),
+    planet === 0 ? 0 : planet === 1 ? 3 : 2,
+    Math.floor(expectedPar * (planet === 0 ? 0 : planet === 1 ? 0.3 : 0.24)),
   );
-  const minimumAverage = planet === 0 ? 3 : 2.7;
+  const minimumAverage = planet === 0 ? 2 : planet === 1 ? 3 : 2.7;
   if (
     !movement ||
     movement.average < minimumAverage ||
@@ -696,9 +732,13 @@ function buildLevel(stage: RawStage): Level {
   };
 }
 
-const ALL_ROWS: RawStage[] = [...CAMPAIGN_ROWS, ...EXPANSION_ROWS];
+const ALL_ROWS: RawStage[] = [
+  ...TRAINING_ROWS,
+  ...CAMPAIGN_ROWS,
+  ...EXPANSION_ROWS,
+].map((stage, index) => ({ ...stage, id: index + 1 }));
 
-// 기존 30개 고정 맵과 고정 시드로 생성한 확장 60개 맵을 모두 BFS로 다시 검증합니다.
+// 지구 훈련 30개와 기존 우주 탐사 90개를 모두 BFS로 다시 검증합니다.
 export const LEVELS: Level[] = ALL_ROWS.map(buildLevel);
 
 export function starsFor(best: number | null, par: number) {
