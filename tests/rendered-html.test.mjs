@@ -58,6 +58,9 @@ test("renders the Earth training and three-planet campaign shell", async () => {
   assert.match(html, /지구 궤도 연구실/);
   assert.match(html, /쉬움/);
   assert.match(html, /보통/);
-  assert.match(html, /잠긴 행성/);
+  assert.doesNotMatch(html, /잠긴 행성/);
+  assert.match(html, /아르코/);
+  assert.match(html, /기어라/);
+  assert.match(html, /프리즘/);
   assert.doesNotMatch(html, /기록 공유/);
 });
