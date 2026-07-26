@@ -127,8 +127,8 @@ export const PLANETS: Planet[] = [
     code: "EARTH-LAB",
     name: "지구 궤도 연구실",
     shortName: "지구 연구실",
-    description: "작은 실험실에서 직진·정지·경계 회피를 차근차근 배우는 훈련 과정",
-    mechanic: "기초 조종 훈련",
+    description: "작은 실험실에서 기본 이동부터 행성별 핵심 기믹까지 차근차근 배우는 훈련 과정",
+    mechanic: "행성 기믹 예비 훈련",
     difficulty: "쉬움",
     location: "훈련 시설",
     accent: "#2377d5",
@@ -208,12 +208,12 @@ const SPACE_CHAPTERS: Chapter[] = [
 ];
 
 export const CHAPTERS: Chapter[] = [
-  chapter(1, 0, 0, "LAB-1", "직진 기초", "PAR 1–2", "한 방향을 누르면 벽까지 직진한다는 기본 규칙을 배우는 구역", ["작은 연구실", "한 번 이동"], "#2377d5"),
-  chapter(2, 0, 1, "LAB-2", "정지 연습", "PAR 2–3", "파란 실험 블록을 정지점으로 삼아 방향을 바꾸는 구역", ["정지 블록", "방향 전환"], "#278bd7"),
-  chapter(3, 0, 2, "LAB-3", "모서리 훈련", "PAR 3–4", "연구실 모서리와 여러 정지점을 차례로 활용하는 구역", ["모서리", "경로 읽기"], "#22a4c7"),
-  chapter(4, 0, 3, "LAB-4", "선택 훈련", "PAR 4–5", "여러 블록 중 다음 이동에 필요한 정지점을 고르는 구역", ["정지점 선택", "짧은 우회"], "#19a78f"),
-  chapter(5, 0, 4, "LAB-5", "생존 훈련", "PAR 4–5", "열린 실험실 출구를 피해 안전한 벽으로 이동하는 구역", ["위험 경계", "안전한 벽"], "#e9a23b"),
-  chapter(6, 0, 5, "LAUNCH", "탐사 준비", "PAR 5–6", "작은 연구실에서 배운 규칙을 연결하는 마지막 모의 탐사", ["종합 훈련", "우주 출발"], "#ef6b5b"),
+  chapter(1, 0, 0, "LAB-1", "직진 기초", "PAR 1–3", "벽까지 직진하고 파란 블록에서 멈추는 기본 이동을 익히는 구역", ["기본 이동", "정지 블록"], "#2377d5"),
+  chapter(2, 0, 1, "LAB-2", "일방통행 훈련", "PAR 2–3", "화살표 방향으로는 통과하고 반대 방향에서는 벽처럼 쓰는 구역", ["일방통행", "역방향 차단"], "#278bd7"),
+  chapter(3, 0, 2, "LAB-3", "워프 훈련", "PAR 2–4", "보라색 워프 쌍을 이용해 반대편 실험실로 이동하는 구역", ["워프", "도착 방향 읽기"], "#7b6de1"),
+  chapter(4, 0, 3, "LAB-4", "게이트 훈련", "PAR 2–5", "스위치를 먼저 밟아 잠긴 문을 열고 통과하는 구역", ["스위치", "잠금 문"], "#19a78f"),
+  chapter(5, 0, 4, "LAB-5", "회전 훈련", "PAR 2–4", "노란 회전 패드가 진행 방향을 시계 방향으로 꺾는 구역", ["회전 패드", "방향 예측"], "#e9a23b"),
+  chapter(6, 0, 5, "LAUNCH", "위상 모의 탐사", "PAR 3–5", "위상 벽과 회전 패드를 함께 사용해 우주 탐사를 예행하는 구역", ["위상 전환", "회전 패드"], "#ef6b5b"),
   ...SPACE_CHAPTERS.map((item) => ({
     ...item,
     id: item.id + ZONES_PER_PLANET,
@@ -543,7 +543,14 @@ function measureSolution(
 }
 
 function requiredFeatures(planet: number, zone: number) {
-  if (planet === 0) return 0;
+  if (planet === 0) {
+    if (zone === 1) return FEATURE.oneWay;
+    if (zone === 2) return FEATURE.portal;
+    if (zone === 3) return FEATURE.switch | FEATURE.gate;
+    if (zone === 4) return FEATURE.rotator;
+    if (zone === 5) return FEATURE.phaseSwitch | FEATURE.phaseGate | FEATURE.rotator;
+    return 0;
+  }
   if (planet === 1) {
     if (zone === 2) return FEATURE.oneWay;
     if (zone === 3) return FEATURE.oneWay | FEATURE.portal;
