@@ -13,24 +13,38 @@
 }
 
 .planet-1 {
+  --mint: #2f83c8;
+  --mint-deep: #155077;
+  --planet-accent: #19a78f;
+}
+
+.planet-2 {
   --mint: #74efc2;
   --mint-deep: #1da47f;
   --planet-accent: #ff5d78;
 }
 
-.planet-2 {
+.planet-3 {
   --mint: #ffd166;
   --mint-deep: #a66c12;
   --planet-accent: #5bd3ff;
 }
 
-.planet-3 {
+.planet-4 {
   --mint: #a987ff;
   --mint-deep: #6542bd;
   --planet-accent: #55f2df;
 }
 
-.planet-2.site-shell {
+.planet-1.site-shell {
+  background:
+    linear-gradient(rgba(32, 111, 145, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(32, 111, 145, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, #24373c 0%, #0d1619 40%, #070a0c 75%);
+  background-size: 42px 42px, 42px 42px, auto;
+}
+
+.planet-3.site-shell {
   background:
     linear-gradient(rgba(91, 211, 255, 0.02) 1px, transparent 1px),
     linear-gradient(90deg, rgba(91, 211, 255, 0.02) 1px, transparent 1px),
@@ -38,7 +52,7 @@
   background-size: 42px 42px, 42px 42px, auto;
 }
 
-.planet-3.site-shell {
+.planet-4.site-shell {
   background:
     linear-gradient(rgba(169, 135, 255, 0.022) 1px, transparent 1px),
     linear-gradient(90deg, rgba(169, 135, 255, 0.022) 1px, transparent 1px),
@@ -477,11 +491,48 @@ button:focus-visible {
   letter-spacing: 0.12em;
 }
 
+.difficulty-worlds {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 2.2fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.difficulty-group {
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid rgba(255,255,255,0.09);
+  background: rgba(255,255,255,0.018);
+}
+
+.difficulty-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 1px 3px 7px;
+  font-size: 9px;
+}
+
+.difficulty-heading strong {
+  padding: 3px 7px;
+  color: #06130f;
+  background: var(--mint);
+  font-size: 9px;
+}
+
+.difficulty-heading span {
+  color: #78827f;
+  font-weight: 800;
+}
+
 .planet-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-bottom: 8px;
+}
+
+.difficulty-group:first-child .planet-tabs {
+  grid-template-columns: 1fr;
 }
 
 .planet-tabs button {
@@ -901,6 +952,7 @@ button:focus-visible {
 .win-layer {
   z-index: 14;
   padding: 20px;
+  overflow-y: auto;
   background: rgba(4, 6, 7, 0.62);
   backdrop-filter: blur(6px);
 }
@@ -987,33 +1039,9 @@ button:focus-visible {
 }
 
 .win-actions .primary-button,
-.win-actions .secondary-button,
-.win-actions .share-button {
+.win-actions .secondary-button {
   min-width: 132px;
   min-height: 44px;
-}
-
-.share-button {
-  min-height: 44px;
-  padding: 0 17px;
-  color: var(--mint);
-  border: 1px solid color-mix(in srgb, var(--mint) 48%, transparent);
-  background: color-mix(in srgb, var(--mint) 8%, transparent);
-  font-size: 12px;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.share-button:hover {
-  background: color-mix(in srgb, var(--mint) 15%, transparent);
-}
-
-.share-status {
-  min-height: 15px;
-  margin: 10px 0 0;
-  color: var(--mint);
-  font-size: 10px;
-  font-weight: 800;
 }
 
 .play-footer {
@@ -1429,6 +1457,13 @@ button:focus-visible {
     aspect-ratio: auto;
   }
 
+  .game-panel.screen-won,
+  .screen-won .game-canvas {
+    min-height: 520px;
+    height: 520px;
+    aspect-ratio: auto;
+  }
+
   .menu-layer {
     justify-content: flex-start;
     gap: 22px;
@@ -1537,6 +1572,14 @@ button:focus-visible {
     min-width: 215px;
   }
 
+  .difficulty-worlds {
+    grid-template-columns: 1fr;
+  }
+
+  .difficulty-group .planet-tabs button {
+    min-width: 205px;
+  }
+
   .chapter-tabs {
     display: flex;
     padding-bottom: 5px;
@@ -1629,7 +1672,9 @@ button:focus-visible {
   .play-footer {
     gap: 14px;
     justify-content: center;
-    min-height: 132px;
+    align-items: flex-start;
+    min-height: 158px;
+    padding-top: 24px;
   }
 
   .footer-hint {
@@ -1640,6 +1685,10 @@ button:focus-visible {
   }
 
   .play-footer.is-menu {
+    display: none;
+  }
+
+  .play-footer.is-won {
     display: none;
   }
 
@@ -1773,7 +1822,10 @@ button:focus-visible {
   }
 
   .win-card {
-    padding: 20px;
+    width: min(100%, 420px);
+    max-height: calc(100svh - 24px);
+    padding: 18px;
+    overflow-y: auto;
   }
 
   .win-card h2 {
@@ -1785,13 +1837,15 @@ button:focus-visible {
   }
 
   .win-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: 16px;
   }
 
   .win-actions .primary-button,
-  .win-actions .secondary-button,
-  .win-actions .share-button {
-    min-width: 118px;
+  .win-actions .secondary-button {
+    min-width: 0;
+    width: 100%;
   }
 
   .footer-hint {

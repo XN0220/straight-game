@@ -43,10 +43,10 @@ type ActiveMove = {
 
 const AVATAR_GRID = 10;
 const AVATAR_STORAGE_KEY = "straight-line-avatar-v2";
-const UNLOCK_STORAGE_KEY = "straight-line-unlocked-v5";
-const BEST_STORAGE_KEY = "straight-line-bests-v5";
-const PREVIOUS_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v3";
-const PREVIOUS_BEST_STORAGE_KEY = "straight-line-bests-v4";
+const UNLOCK_STORAGE_KEY = "straight-line-unlocked-v6";
+const BEST_STORAGE_KEY = "straight-line-bests-v6";
+const PREVIOUS_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v5";
+const PREVIOUS_BEST_STORAGE_KEY = "straight-line-bests-v5";
 const LEGACY_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v2";
 const LEGACY_BEST_STORAGE_KEY = "straight-line-bests-v2";
 const MOVE_SPEED = 680;
@@ -354,7 +354,6 @@ export default function Home() {
   const [isDead, setIsDead] = useState(false);
   const [newBest, setNewBest] = useState(false);
   const [hintVisible, setHintVisible] = useState(false);
-  const [shareStatus, setShareStatus] = useState("");
   const [avatarPixels, setAvatarPixels] = useState<Pixel[]>([...AVATAR_PRESETS[0].pixels]);
   const [draftPixels, setDraftPixels] = useState<Pixel[]>([...AVATAR_PRESETS[0].pixels]);
 
@@ -384,8 +383,12 @@ export default function Home() {
       const legacyBests = JSON.parse(
         window.localStorage.getItem(LEGACY_BEST_STORAGE_KEY) ?? "null",
       );
-      let unlockedValue =
-        Number(currentUnlocked ?? previousUnlocked ?? legacyUnlocked ?? 1) || 1;
+      let unlockedValue = Number(currentUnlocked ?? 1) || 1;
+      if (currentUnlocked === null && previousUnlocked !== null) {
+        unlockedValue = MAPS_PER_PLANET + (Number(previousUnlocked) || 1);
+      } else if (currentUnlocked === null && legacyUnlocked > 1) {
+        unlockedValue = MAPS_PER_PLANET + legacyUnlocked;
+      }
       if (
         currentUnlocked === null &&
         previousUnlocked === null &&
@@ -393,7 +396,7 @@ export default function Home() {
         Array.isArray(legacyBests) &&
         typeof legacyBests[4] === "number"
       ) {
-        unlockedValue = 6;
+        unlockedValue = MAPS_PER_PLANET + 6;
       }
       const safeUnlocked = Math.max(1, Math.min(LEVELS.length, unlockedValue));
       setUnlocked(safeUnlocked);
@@ -415,8 +418,8 @@ export default function Home() {
           : Array.isArray(legacyBests)
             ? legacyBests
             : [];
-        sourceBests.slice(0, MAPS_PER_PLANET).forEach((best, index) => {
-          if (typeof best === "number") migratedBests[index] = best;
+        sourceBests.slice(0, MAPS_PER_PLANET * 3).forEach((best, index) => {
+          if (typeof best === "number") migratedBests[index + MAPS_PER_PLANET] = best;
         });
         setStageBests(migratedBests);
         window.localStorage.setItem(BEST_STORAGE_KEY, JSON.stringify(migratedBests));
@@ -490,7 +493,6 @@ export default function Home() {
       setIsDead(false);
       setNewBest(false);
       setHintVisible(false);
-      setShareStatus("");
       setBump(false);
       setGameScreen("playing");
       window.setTimeout(() => gamePanelRef.current?.focus(), 0);
@@ -673,6 +675,18 @@ export default function Home() {
       context.fillStyle = "rgba(0, 0, 0, 0.7)";
       context.fillRect(x + 3, y + 4, size - 2, size - 2);
       if (planet === 0) {
+        context.fillStyle = "#174f86";
+        context.fillRect(x, y, size, size);
+        context.fillStyle = "#2f83c8";
+        context.fillRect(x + 2, y + 2, size - 4, size - 4);
+        context.fillStyle = "#d9f3ff";
+        context.fillRect(x + 4, y + 4, size - 8, 4);
+        context.fillStyle = "#155077";
+        context.fillRect(x + 8, y + 13, size - 16, size - 19);
+        context.strokeStyle = "rgba(255,255,255,0.62)";
+        context.lineWidth = 1;
+        context.strokeRect(x + 5, y + 5, size - 10, size - 10);
+      } else if (planet === 1) {
         context.fillStyle = "#9f233b";
         context.fillRect(x, y, size, size);
         context.fillStyle = "#d83d58";
@@ -688,7 +702,7 @@ export default function Home() {
           const offset = row % 2 === 0 ? 9 : 18;
           context.fillRect(x + offset, y + row * 9 + 2, 2, 7);
         }
-      } else if (planet === 1) {
+      } else if (planet === 2) {
         context.fillStyle = "#2b343b";
         context.fillRect(x, y, size, size);
         context.fillStyle = "#53616b";
@@ -955,16 +969,18 @@ export default function Home() {
       context.restore();
     };
 
-    const drawBoundary = (alpha = 1) => {
+    const drawBoundary = (planet: number, alpha = 1) => {
       context.save();
       context.globalAlpha = alpha;
-      context.strokeStyle = "#ff5d78";
+      context.strokeStyle = planet === 0 ? "#ef9b3f" : "#ff5d78";
       context.lineWidth = 4;
-      context.shadowColor = "rgba(255, 93, 120, 0.55)";
+      context.shadowColor =
+        planet === 0 ? "rgba(239, 155, 63, 0.4)" : "rgba(255, 93, 120, 0.55)";
       context.shadowBlur = 10;
       context.strokeRect(2, 2, WORLD_WIDTH - 4, WORLD_HEIGHT - 4);
       context.shadowBlur = 0;
-      context.strokeStyle = "rgba(255, 160, 176, 0.5)";
+      context.strokeStyle =
+        planet === 0 ? "rgba(180, 104, 28, 0.42)" : "rgba(255, 160, 176, 0.5)";
       context.lineWidth = 2;
       context.setLineDash([9, 13]);
       context.strokeRect(7, 7, WORLD_WIDTH - 14, WORLD_HEIGHT - 14);
@@ -1058,13 +1074,15 @@ export default function Home() {
       const sceneRunState =
         screenRef.current === "menu" ? INITIAL_RUN_STATE : runStateRef.current;
       const sceneAlpha = screenRef.current === "menu" ? 0.13 : 1;
-      const planetBackground = ["#050508", "#071014", "#0b0717"][sceneLevel.planet];
+      const planetBackground = ["#f7fbfd", "#050508", "#071014", "#0b0717"][sceneLevel.planet];
       const planetGlow = [
+        "rgba(151, 220, 235, 0.28)",
         "rgba(27, 46, 44, 0.32)",
         "rgba(32, 68, 79, 0.38)",
         "rgba(82, 48, 135, 0.42)",
       ][sceneLevel.planet];
       const gridColor = [
+        "rgba(24, 94, 123, 0.13)",
         "rgba(148, 255, 223, 0.055)",
         "rgba(91, 211, 255, 0.07)",
         "rgba(186, 160, 255, 0.075)",
@@ -1094,7 +1112,7 @@ export default function Home() {
         }
       }
 
-      drawBoundary(screenRef.current === "menu" ? 0.18 : 0.78);
+      drawBoundary(sceneLevel.planet, screenRef.current === "menu" ? 0.18 : 0.78);
       drawGoal(sceneLevel.goal, sceneAlpha);
       sceneLevel.oneWayCells.forEach((cell) => drawOneWay(cell, sceneAlpha));
       sceneLevel.portals.forEach((cell, index) => drawPortal(cell, index, sceneAlpha));
@@ -1244,28 +1262,6 @@ export default function Home() {
     window.setTimeout(() => playTone(880, 0.1, "sine"), 70);
   };
 
-  const shareResult = async () => {
-    const earnedStars = starsFor(moves, currentLevel.par);
-    const text = [
-      "직진 게임 " + currentPlanetMeta.name + " " + currentLevel.localId + "번 맵 클리어!",
-      "이동 " + moves + "회 · " + "★".repeat(earnedStars) + "☆".repeat(3 - earnedStars),
-      "너도 도전해봐!",
-      window.location.href,
-    ].join("\n");
-
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: "직진 게임 기록", text });
-        setShareStatus("공유 완료");
-      } else {
-        await navigator.clipboard.writeText(text);
-        setShareStatus("기록 복사 완료");
-      }
-    } catch {
-      setShareStatus("공유가 취소됐어요");
-    }
-  };
-
   return (
     <main
       className={
@@ -1282,7 +1278,7 @@ export default function Home() {
           직진 게임
         </button>
         <div className="topbar-actions">
-          <span className="build-label">3 PLANETS · 90 MAPS · ★ {totalStars}/270</span>
+          <span className="build-label">EARTH TRAINING + 3 PLANETS · 120 MAPS · ★ {totalStars}/360</span>
           <button
             className="icon-button"
             type="button"
@@ -1398,8 +1394,8 @@ export default function Home() {
                   <p className="game-kicker">SLIDE · STOP · SURVIVE</p>
                   <h1>직진 게임</h1>
                   <p className="menu-copy">
-                    서로 다른 블록과 규칙을 가진 세 행성, 90개 맵을 돌파하세요.
-                    한 방향을 정하면 벽이나 기믹을 만날 때까지 멈출 수 없습니다.
+                    지구 연구실에서 조종 훈련을 마친 뒤 세 행성을 탐사하세요.
+                    쉬움 30개와 보통 90개, 총 120개 맵이 이어집니다.
                   </p>
                   <div className="menu-actions">
                     <button className="primary-button" type="button" onClick={() => startStage(selectedStage)}>
@@ -1440,41 +1436,59 @@ export default function Home() {
                 </aside>
               </div>
 
-              <div className="stage-selector" aria-label="스테이지 선택">
+              <div className="stage-selector" aria-label="난이도와 스테이지 선택">
                 <div className="stage-selector-heading">
-                  <strong>PLANET &amp; MAP SELECT</strong>
+                  <strong>DIFFICULTY &amp; MAP SELECT</strong>
                   <span>{Math.min(MAPS_PER_PLANET, Math.max(0, unlocked - selectedPlanet * MAPS_PER_PLANET))}/{MAPS_PER_PLANET} OPEN · ★ {selectedPlanetStars}/90</span>
                 </div>
-                <div className="planet-tabs" role="tablist" aria-label="행성 선택">
-                  {PLANETS.map((planet, planetIndex) => {
-                    const firstStage = planetIndex * MAPS_PER_PLANET;
-                    const isUnlocked = firstStage < unlocked;
-                    const planetStars = stageBests
-                      .slice(firstStage, firstStage + MAPS_PER_PLANET)
-                      .reduce<number>(
-                        (sum, best, mapIndex) =>
-                          sum + starsFor(best, LEVELS[firstStage + mapIndex].par),
-                        0,
-                      );
-                    return (
-                      <button
-                        key={planet.id}
-                        type="button"
-                        role="tab"
-                        disabled={!isUnlocked}
-                        aria-selected={selectedPlanet === planetIndex}
-                        className={selectedPlanet === planetIndex ? "is-selected" : ""}
-                        onClick={() => choosePlanet(planetIndex)}
-                      >
-                        <span className="planet-orb" aria-hidden="true" />
-                        <span>
-                          <small>PLANET {String(planet.id).padStart(2, "0")}</small>
-                          <strong>{isUnlocked ? planet.name : "잠긴 행성"}</strong>
-                        </span>
-                        <em>{isUnlocked ? "★ " + planetStars + "/90" : "LOCKED"}</em>
-                      </button>
-                    );
-                  })}
+                <div className="difficulty-worlds">
+                  {[
+                    { title: "쉬움", subtitle: "지구 훈련", worlds: PLANETS.slice(0, 1) },
+                    { title: "보통", subtitle: "행성 탐사", worlds: PLANETS.slice(1) },
+                  ].map((group) => (
+                    <section className="difficulty-group" key={group.title}>
+                      <div className="difficulty-heading">
+                        <strong>{group.title}</strong>
+                        <span>{group.subtitle}</span>
+                      </div>
+                      <div className="planet-tabs" role="tablist" aria-label={group.title + " 난이도"}>
+                        {group.worlds.map((planet) => {
+                          const planetIndex = PLANETS.indexOf(planet);
+                          const firstStage = planetIndex * MAPS_PER_PLANET;
+                          const isUnlocked = firstStage < unlocked;
+                          const planetStars = stageBests
+                            .slice(firstStage, firstStage + MAPS_PER_PLANET)
+                            .reduce<number>(
+                              (sum, best, mapIndex) =>
+                                sum + starsFor(best, LEVELS[firstStage + mapIndex].par),
+                              0,
+                            );
+                          return (
+                            <button
+                              key={planet.id}
+                              type="button"
+                              role="tab"
+                              disabled={!isUnlocked}
+                              aria-selected={selectedPlanet === planetIndex}
+                              className={selectedPlanet === planetIndex ? "is-selected" : ""}
+                              onClick={() => choosePlanet(planetIndex)}
+                            >
+                              <span className="planet-orb" aria-hidden="true" />
+                              <span>
+                                <small>
+                                  {planet.location === "훈련 시설"
+                                    ? "EARTH TRAINING"
+                                    : "PLANET " + String(planet.id - 1).padStart(2, "0")}
+                                </small>
+                                <strong>{isUnlocked ? planet.name : "잠긴 행성"}</strong>
+                              </span>
+                              <em>{isUnlocked ? "★ " + planetStars + "/90" : "LOCKED"}</em>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
                 </div>
                 <div className="chapter-tabs" role="tablist" aria-label="난이도 구역 선택">
                   {CHAPTERS.filter((chapter) => chapter.planet === selectedPlanet).map((chapter) => {
@@ -1561,9 +1575,11 @@ export default function Home() {
               <div className="win-card">
                 <span className="win-badge">
                   {isFinalStage
-                    ? "ALL 90 MAPS CLEAR"
+                    ? "ALL 120 MAPS CLEAR"
                     : isPlanetFinalStage
-                      ? currentPlanetMeta.code + " PLANET COMPLETE"
+                      ? currentLevel.planet === 0
+                        ? "EARTH TRAINING COMPLETE"
+                        : currentPlanetMeta.code + " PLANET COMPLETE"
                       : currentLevel.localId % MAPS_PER_ZONE === 0
                       ? "ZONE COMPLETE"
                       : "MAP CLEAR"}
@@ -1601,17 +1617,13 @@ export default function Home() {
                   <button className="secondary-button" type="button" onClick={returnToMenu}>
                     맵 선택
                   </button>
-                  <button className="share-button" type="button" onClick={shareResult}>
-                    기록 공유
-                  </button>
                 </div>
-                {shareStatus && <p className="share-status" role="status">{shareStatus}</p>}
               </div>
             </div>
           )}
         </div>
 
-        <div className={`play-footer ${screen === "menu" ? "is-menu" : ""}`}>
+        <div className={`play-footer ${screen === "menu" ? "is-menu" : screen === "won" ? "is-won" : ""}`}>
           <p className="keyboard-hint">
             <span className="key">↑</span>
             <span className="key">↓</span>
@@ -1643,8 +1655,8 @@ export default function Home() {
       </section>
 
       <footer className="site-footer">
-        <span>23×15 GRID · 0.95 PLAYER · 90 VERIFIED MAPS</span>
-        <span>3개 행성 · 맵마다 별 3개 · 최고 기록 저장</span>
+        <span>EARTH LAB + 3 PLANETS · 0.95 PLAYER · 120 VERIFIED MAPS</span>
+        <span>쉬움 30개 · 보통 90개 · 맵마다 별 3개</span>
       </footer>
 
       {showHelp && (
@@ -1686,8 +1698,8 @@ export default function Home() {
               <article>
                 <span>04</span>
                 <div>
-                  <h3>행성마다 블록과 새 규칙이 달라집니다</h3>
-                  <p>아르코의 기존 30개 맵 뒤에 회전 패드의 기어라, 두 색 위상 벽의 프리즘이 이어집니다.</p>
+                  <h3>지구 훈련 후 행성 탐사가 시작됩니다</h3>
+                  <p>작은 연구실의 쉬움 30개를 거치면 아르코·기어라·프리즘의 보통 난이도 90개가 이어집니다.</p>
                 </div>
               </article>
               <article>
@@ -1707,7 +1719,7 @@ export default function Home() {
               <article>
                 <span>07</span>
                 <div>
-                  <h3>90개 맵은 모두 자동 검증됐습니다</h3>
+                  <h3>120개 맵은 모두 자동 검증됐습니다</h3>
                   <p>각 맵의 최단 경로와 행성별 필수 기믹 사용 여부를 게임이 시작될 때 다시 확인합니다.</p>
                 </div>
               </article>
