@@ -333,7 +333,6 @@ function AvatarEditor({
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gamePanelRef = useRef<HTMLDivElement>(null);
-  const stageSelectorRef = useRef<HTMLDivElement>(null);
   const positionRef = useRef<Point>(cellCenter(LEVELS[0].start));
   const cellRef = useRef<Cell>({ ...LEVELS[0].start });
   const stageIndexRef = useRef(0);
@@ -359,7 +358,6 @@ export default function Home() {
   const [screen, setScreen] = useState<Screen>("menu");
   const [stageIndex, setStageIndex] = useState(0);
   const [selectedStage, setSelectedStage] = useState(0);
-  const [selectedChapter, setSelectedChapter] = useState(0);
   const [selectedPlanet, setSelectedPlanet] = useState(0);
   const [lastPlayedStage, setLastPlayedStage] = useState<number | null>(null);
   const [moves, setMoves] = useState(0);
@@ -380,6 +378,7 @@ export default function Home() {
   const [hintVisible, setHintVisible] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [wormholeOpen, setWormholeOpen] = useState(false);
+  const [mapSelectOpen, setMapSelectOpen] = useState(false);
   const [avatarPixels, setAvatarPixels] = useState<Pixel[]>([...AVATAR_PRESETS[0].pixels]);
   const [draftPixels, setDraftPixels] = useState<Pixel[]>([...AVATAR_PRESETS[0].pixels]);
 
@@ -457,7 +456,6 @@ export default function Home() {
       setLastPlayedStage(canRestoreLastStage ? storedLastStage : null);
       // 첫 화면의 선택은 항상 지구 연구실 1번입니다. 최근 맵은 이어하기에서만 사용합니다.
       setSelectedStage(0);
-      setSelectedChapter(0);
       setSelectedPlanet(0);
 
       const storedBests = JSON.parse(window.localStorage.getItem(BEST_STORAGE_KEY) ?? "null");
@@ -554,7 +552,6 @@ export default function Home() {
       movesRef.current = 0;
       setStageIndex(safeIndex);
       setSelectedStage(safeIndex);
-      setSelectedChapter(Math.floor(safeIndex / 5));
       setSelectedPlanet(Math.floor(safeIndex / MAPS_PER_PLANET));
       window.localStorage.setItem(LAST_STAGE_STORAGE_KEY, String(safeIndex));
       setLastPlayedStage(safeIndex);
@@ -1345,7 +1342,6 @@ export default function Home() {
 
   const currentLevel = LEVELS[stageIndex];
   const selectedLevel = LEVELS[selectedStage];
-  const selectedChapterMeta = CHAPTERS[selectedChapter];
   const currentChapterMeta = CHAPTERS[currentLevel.chapter];
   const selectedPlanetMeta = PLANETS[selectedPlanet];
   const currentPlanetMeta = PLANETS[currentLevel.planet];
@@ -1353,8 +1349,8 @@ export default function Home() {
     lastPlayedStage === null ? null : LEVELS[lastPlayedStage];
   const currentHintCheckpoint = solutionCheckpoint(currentLevel);
   const visibleLevels = LEVELS.slice(
-    selectedChapter * MAPS_PER_ZONE,
-    selectedChapter * MAPS_PER_ZONE + MAPS_PER_ZONE,
+    selectedPlanet * MAPS_PER_PLANET,
+    selectedPlanet * MAPS_PER_PLANET + MAPS_PER_PLANET,
   );
   const currentChapterLevels = LEVELS.slice(
     currentLevel.chapter * MAPS_PER_ZONE,
@@ -1381,27 +1377,11 @@ export default function Home() {
     return localIndex < (planetUnlocks[planetIndex] ?? 1);
   };
 
-  const chooseChapter = (chapterIndex: number) => {
-    const chapterMeta = CHAPTERS[chapterIndex];
-    const planetFirstStage = chapterMeta.planet * MAPS_PER_PLANET;
-    const chapterFirstLocalStage = chapterMeta.zone * MAPS_PER_ZONE;
-    const openCount = planetUnlocks[chapterMeta.planet] ?? 1;
-    if (chapterFirstLocalStage >= openCount) return;
-    const latestUnlocked =
-      planetFirstStage +
-      Math.min(chapterFirstLocalStage + MAPS_PER_ZONE - 1, openCount - 1);
-    setSelectedChapter(chapterIndex);
-    setSelectedStage(
-      Math.max(planetFirstStage + chapterFirstLocalStage, latestUnlocked),
-    );
-  };
-
   const choosePlanet = (planetIndex: number) => {
     const firstStage = planetIndex * MAPS_PER_PLANET;
     const openCount = planetUnlocks[planetIndex] ?? 1;
     const nextStage = firstStage + Math.max(0, openCount - 1);
     setSelectedPlanet(planetIndex);
-    setSelectedChapter(Math.floor(nextStage / MAPS_PER_ZONE));
     setSelectedStage(nextStage);
   };
 
@@ -1409,13 +1389,6 @@ export default function Home() {
     setHintVisible(true);
     playTone(660, 0.08, "sine");
     window.setTimeout(() => playTone(880, 0.1, "sine"), 70);
-  };
-
-  const scrollToMapSelect = () => {
-    stageSelectorRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
   };
 
   return (
@@ -1563,9 +1536,14 @@ export default function Home() {
                     쉬움 30개와 보통 90개, 총 120개 맵이 이어집니다.
                   </p>
                   <div className="menu-actions">
-                    <button className="primary-button" type="button" onClick={scrollToMapSelect}>
+                    <button
+                      className="primary-button"
+                      type="button"
+                      aria-label="맵 선택: 쉬움 지구 궤도 연구실, 보통 아르코·기어라·프리즘"
+                      onClick={() => setMapSelectOpen(true)}
+                    >
                       <span>맵 선택</span>
-                      <span aria-hidden="true">↓</span>
+                      <span aria-hidden="true">→</span>
                     </button>
                     <div className="continue-action">
                       <button
@@ -1630,151 +1608,100 @@ export default function Home() {
                 </aside>
               </div>
 
-              <div
-                ref={stageSelectorRef}
-                className="stage-selector"
-                aria-label="난이도와 스테이지 선택"
-              >
-                <div className="stage-selector-heading">
-                  <strong>DIFFICULTY &amp; MAP SELECT</strong>
-                  <span>{selectedPlanetOpenCount}/{MAPS_PER_PLANET} OPEN · ★ {selectedPlanetStars}/90</span>
-                </div>
-                <div className="difficulty-worlds">
-                  {[
-                    { title: "쉬움", subtitle: "지구 훈련", worlds: PLANETS.slice(0, 1) },
-                    { title: "보통", subtitle: "행성 탐사", worlds: PLANETS.slice(1) },
-                  ].map((group) => (
-                    <section className="difficulty-group" key={group.title}>
-                      <div className="difficulty-heading">
-                        <strong>{group.title}</strong>
-                        <span>{group.subtitle}</span>
-                      </div>
-                      <div className="planet-tabs" role="tablist" aria-label={group.title + " 난이도"}>
-                        {group.worlds.map((planet) => {
-                          const planetIndex = PLANETS.indexOf(planet);
-                          const firstStage = planetIndex * MAPS_PER_PLANET;
-                          const isUnlocked = (planetUnlocks[planetIndex] ?? 1) >= 1;
-                          const planetStars = stageBests
-                            .slice(firstStage, firstStage + MAPS_PER_PLANET)
-                            .reduce<number>(
-                              (sum, best, mapIndex) =>
-                                sum + starsFor(best, LEVELS[firstStage + mapIndex].par),
-                              0,
-                            );
-                          return (
-                            <button
-                              key={planet.id}
-                              type="button"
-                              role="tab"
-                              disabled={!isUnlocked}
-                              aria-selected={selectedPlanet === planetIndex}
-                              className={selectedPlanet === planetIndex ? "is-selected" : ""}
-                              onClick={() => choosePlanet(planetIndex)}
-                            >
-                              <span className="planet-orb" aria-hidden="true" />
-                              <span>
-                                <small>
-                                  {planet.location === "훈련 시설"
-                                    ? "EARTH TRAINING"
-                                    : "PLANET " + String(planet.id - 1).padStart(2, "0")}
-                                </small>
-                                <strong>{isUnlocked ? planet.name : "잠긴 행성"}</strong>
-                              </span>
-                              <em>{isUnlocked ? "★ " + planetStars + "/90" : "LOCKED"}</em>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ))}
-                </div>
-                <div className="chapter-tabs" role="tablist" aria-label="난이도 구역 선택">
-                  {CHAPTERS.filter((chapter) => chapter.planet === selectedPlanet).map((chapter) => {
-                    const chapterIndex = chapter.id - 1;
-                    const isUnlocked =
-                      chapter.zone * MAPS_PER_ZONE < selectedPlanetOpenCount;
-                    return (
-                      <button
-                        key={chapter.id}
-                        type="button"
-                        role="tab"
-                        disabled={!isUnlocked}
-                        aria-selected={selectedChapter === chapterIndex}
-                        className={selectedChapter === chapterIndex ? "is-selected" : ""}
-                        onClick={() => chooseChapter(chapterIndex)}
-                      >
-                        <span>{String(chapter.zone + 1).padStart(2, "0")}</span>
-                        <strong>{isUnlocked ? chapter.code : "LOCKED"}</strong>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="chapter-summary">
-                  <div>
-                    <span>{selectedPlanetMeta.shortName} · ZONE {String(selectedChapterMeta.zone + 1).padStart(2, "0")}</span>
-                    <strong>{selectedChapterMeta.name}</strong>
+              {mapSelectOpen && (
+                <div className="map-select-modal" role="dialog" aria-modal="true" aria-label="행성과 맵 선택">
+                  <div className="map-select-header">
+                    <div>
+                      <span>PLANET &amp; MAP SELECT</span>
+                      <strong>행성을 고른 뒤 번호를 선택하세요</strong>
+                    </div>
+                    <button type="button" onClick={() => setMapSelectOpen(false)} aria-label="맵 선택 닫기">×</button>
                   </div>
-                  <p>{selectedChapterMeta.description}</p>
-                  <div className="mechanic-tags" aria-label="이 구역의 규칙">
-                    {selectedChapterMeta.mechanics.map((mechanic) => (
-                      <span key={mechanic}>{mechanic}</span>
-                    ))}
+                  <div className="planet-keypad-tabs" role="tablist" aria-label="행성 선택">
+                    {PLANETS.map((planet, planetIndex) => {
+                      const firstStage = planetIndex * MAPS_PER_PLANET;
+                      const planetStars = stageBests
+                        .slice(firstStage, firstStage + MAPS_PER_PLANET)
+                        .reduce<number>(
+                          (sum, best, mapIndex) =>
+                            sum + starsFor(best, LEVELS[firstStage + mapIndex].par),
+                          0,
+                        );
+                      return (
+                        <button
+                          key={planet.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={selectedPlanet === planetIndex}
+                          className={`planet-key planet-key-${planetIndex + 1} ${selectedPlanet === planetIndex ? "is-selected" : ""}`}
+                          onClick={() => choosePlanet(planetIndex)}
+                        >
+                          <span className="planet-image" aria-hidden="true" />
+                          <small>{planet.location === "훈련 시설" ? "쉬움" : "보통"}</small>
+                          <strong>{planet.shortName}</strong>
+                          <em>★ {planetStars}/90</em>
+                        </button>
+                      );
+                    })}
+                    <button
+                      className="planet-key wormhole-planet-key"
+                      type="button"
+                      onClick={() => {
+                        setMapSelectOpen(false);
+                        setWormholeOpen(true);
+                      }}
+                    >
+                      <span className="planet-image" aria-hidden="true" />
+                      <small>베타</small>
+                      <strong>곡률 행성 에테르</strong>
+                      <em>30 MAPS →</em>
+                    </button>
+                  </div>
+                  <div className="map-keypad-heading">
+                    <div>
+                      <strong>{selectedPlanetMeta.name}</strong>
+                      <span>{selectedPlanetMeta.difficulty} · {selectedPlanetOpenCount}/30 OPEN</span>
+                    </div>
+                    <span>숫자를 누르면 바로 시작합니다</span>
+                  </div>
+                  <div className="stage-keypad" aria-label={`${selectedPlanetMeta.shortName} 30단계`}>
+                    {visibleLevels.map((level) => {
+                      const index = level.id - 1;
+                      const isUnlocked = isStageUnlocked(index);
+                      const stars = starsFor(stageBests[index], level.par);
+                      return (
+                        <button
+                          key={level.id}
+                          type="button"
+                          disabled={!isUnlocked}
+                          aria-label={
+                            isUnlocked
+                              ? `${level.localId}번 ${level.name}, PAR ${level.par}, 별 ${stars}개`
+                              : `${level.localId}번 맵 잠김`
+                          }
+                          onClick={() => {
+                            setSelectedStage(index);
+                            setMapSelectOpen(false);
+                            startStage(index);
+                          }}
+                        >
+                          <strong>{String(level.localId).padStart(2, "0")}</strong>
+                          <span>{"★".repeat(stars)}{"☆".repeat(3 - stars)}</span>
+                          <small>{isUnlocked ? `PAR ${level.par}` : "LOCK"}</small>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                <div className="stage-list">
-                  {visibleLevels.map((level) => {
-                    const index = level.id - 1;
-                    const isUnlocked = isStageUnlocked(index);
-                    const stars = starsFor(stageBests[index], level.par);
-                    return (
-                      <button
-                        key={level.id}
-                        type="button"
-                        disabled={!isUnlocked}
-                        className={selectedStage === index ? "is-selected" : ""}
-                        aria-label={
-                          isUnlocked
-                            ? level.localId + "번 맵 " + level.name + ", 별 " + stars + "개"
-                            : level.localId + "번 맵 잠김"
-                        }
-                        onClick={() => setSelectedStage(index)}
-                      >
-                        <span className="stage-number">{String(level.localId).padStart(2, "0")}</span>
-                        <span className="stage-name">{isUnlocked ? level.name : "LOCKED"}</span>
-                        <span className="stage-best">
-                          {isUnlocked
-                            ? stageBests[index] === null
-                              ? "PAR " + level.par
-                              : "BEST " + stageBests[index]
-                            : "×"}
-                        </span>
-                        <span className="stage-stars" aria-label={stars + "개 별"}>
-                          {Array.from({ length: 3 }, (_, star) => (
-                            <i key={star} className={star < stars ? "is-on" : ""}>★</i>
-                          ))}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="stage-launch-row">
-                  <span>
-                    {selectedPlanetMeta.shortName} · {selectedLevel.localId}번 · PAR {selectedLevel.par}
-                  </span>
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => startStage(selectedStage)}
-                  >
-                    선택한 맵 시작 →
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
           {wormholeOpen && (
-            <WormholeMode onClose={() => setWormholeOpen(false)} />
+            <WormholeMode
+              avatarPixels={avatarPixels}
+              onClose={() => setWormholeOpen(false)}
+            />
           )}
 
           {isDead && (
@@ -1936,8 +1863,8 @@ export default function Home() {
               <article>
                 <span>07</span>
                 <div>
-                  <h3>공식 120맵과 웜홀 베타 5맵</h3>
-                  <p>공식 맵은 최단 경로와 필수 기믹을 자동 검증합니다. 메인의 웜홀에서는 원형 좌표로 움직이는 별도 실험 스테이지를 플레이할 수 있습니다.</p>
+                  <h3>공식 120맵과 웜홀 베타 30맵</h3>
+                  <p>공식 맵은 최단 경로와 필수 기믹을 자동 검증합니다. 웜홀은 작은 입문 맵에서 시작해 포탈과 온오프 블록을 함께 쓰는 고난도 원형 맵까지 이어집니다.</p>
                 </div>
               </article>
             </div>
