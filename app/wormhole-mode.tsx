@@ -113,8 +113,12 @@ export function WormholeMode({
     const restoreFrame = window.requestAnimationFrame(() => {
       try {
         const stored = JSON.parse(window.localStorage.getItem(BEST_KEY) ?? "null");
-        if (Array.isArray(stored) && stored.length === WORMHOLE_STAGES.length) {
-          setBests(stored.map((value) => (typeof value === "number" ? value : null)));
+        if (Array.isArray(stored)) {
+          const restored = Array<number | null>(WORMHOLE_STAGES.length).fill(null);
+          stored.slice(0, WORMHOLE_STAGES.length).forEach((value, index) => {
+            restored[index] = typeof value === "number" ? value : null;
+          });
+          setBests(restored);
         }
       } catch {
         // 손상된 베타 기록은 공식 캠페인과 분리된 기본값으로 대체합니다.
