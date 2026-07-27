@@ -105,6 +105,8 @@ test("defines the 30-map wormhole campaign and keypad map selector", async () =>
 
   assert.match(pageSource, /planet-keypad-tabs/);
   assert.match(pageSource, /stage-keypad/);
+  assert.doesNotMatch(pageSource, /wormhole-planet-key/);
+  assert.match(pageSource, /className="wormhole-entry"/);
   assert.match(pageSource, /avatarPixels=\{avatarPixels\}/);
   assert.match(wormholeSource, /Array\.from\(\{ length: 30 \}/);
   assert.match(wormholeSource, /stage\.id >= 16 && !solution\.features\.has\("portal"\)/);
