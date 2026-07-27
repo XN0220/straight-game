@@ -207,7 +207,7 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
 
   const totalStars = useMemo(
     () =>
-      bests.reduce(
+      bests.reduce<number>(
         (sum, best, index) => sum + starsFor(best, WORMHOLE_STAGES[index].par),
         0,
       ),
