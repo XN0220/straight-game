@@ -238,7 +238,12 @@ export function WormholeMode({
   const playerPoint = cellPoint(cell);
 
   return (
-    <div className="wormhole-mode" role="dialog" aria-modal="true" aria-label="웜홀 베타 스테이지">
+    <div
+      className={`wormhole-mode ${screen === "select" ? "is-selecting" : "is-playing"}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="웜홀 베타 스테이지"
+    >
       <header className="wormhole-header">
         <div>
           <span>WORMHOLE TEST LAB · BETA</span>
@@ -282,11 +287,11 @@ export function WormholeMode({
                   className={
                     item.id >= 21 ? "is-master" : item.id >= 16 ? "has-portal" : ""
                   }
-                  aria-label={`${item.id}번 ${item.name}, PAR ${item.par}, 별 ${stars}개`}
+                  aria-label={`${item.id}번, 별 ${stars}개`}
                   onClick={() => start(index)}
                 >
                   <span>{String(item.id).padStart(2, "0")}</span>
-                  <em>PAR {item.par} · {"★".repeat(stars)}{"☆".repeat(3 - stars)}</em>
+                  <em aria-hidden="true">{"★".repeat(stars)}{"☆".repeat(3 - stars)}</em>
                 </button>
               );
             })}
@@ -297,7 +302,6 @@ export function WormholeMode({
         <div className="wormhole-play">
           <div className="wormhole-side">
             <span className="beta-chip">BETA MAP {String(stage.id).padStart(2, "0")}</span>
-            <h2>{stage.name}</h2>
             <p>{stage.subtitle}</p>
             <div className="wormhole-score">
               <span>MOVE <strong>{moves}</strong></span>
@@ -327,7 +331,7 @@ export function WormholeMode({
           </div>
 
           <div className="radial-board">
-            <svg viewBox="0 0 600 600" role="img" aria-label={`${stage.name} 원형 퍼즐 맵`}>
+            <svg viewBox="0 0 600 600" role="img" aria-label={`${stage.id}번 원형 퍼즐 맵`}>
               <defs>
                 <radialGradient id="wormholeCore">
                   <stop offset="0" stopColor="#050312" />

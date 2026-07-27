@@ -118,5 +118,9 @@ test("defines the 30-map wormhole campaign and keypad map selector", async () =>
   assert.match(wormholeModeSource, /className="radial-right"/);
   assert.match(wormholeModeSource, /className="radial-down"/);
   assert.doesNotMatch(wormholeModeSource, /<small>바깥<\/small>|<small>반시계<\/small>/);
+  assert.doesNotMatch(wormholeModeSource, /<h2>\{stage\.name\}<\/h2>/);
+  assert.doesNotMatch(wormholeModeSource, /<em>PAR \{item\.par\}/);
+  assert.match(wormholeModeSource, /aria-label=\{`\$\{item\.id\}번, 별 \$\{stars\}개`\}/);
+  assert.match(wormholeModeSource, /wormhole-mode \$\{screen === "select" \? "is-selecting" : "is-playing"\}/);
   assert.match(wormholeModeSource, /stored\.slice\(0, WORMHOLE_STAGES\.length\)/);
 });

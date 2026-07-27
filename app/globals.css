@@ -1704,6 +1704,12 @@ button:focus-visible {
     linear-gradient(135deg, #080510 0%, #120921 52%, #05040a 100%);
 }
 
+.wormhole-mode.is-playing {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 .wormhole-header {
   min-height: 68px;
   position: sticky;
@@ -1878,8 +1884,9 @@ button:focus-visible {
 
 .wormhole-stage-grid em {
   max-width: 100%;
-  color: #d6c7ff;
-  font: normal 800 8px/1 "Courier New", monospace;
+  color: #ffd166;
+  font: normal 800 10px/1 "Courier New", monospace;
+  letter-spacing: 0.06em;
   white-space: nowrap;
 }
 
@@ -1947,14 +1954,14 @@ button:focus-visible {
   padding: 14px 24px 18px;
 }
 
-.wormhole-side h2 {
-  margin: 10px 0 6px;
-  font-size: clamp(26px, 3.7vw, 46px);
-  letter-spacing: -0.05em;
+.wormhole-mode.is-playing .wormhole-play {
+  height: calc(100dvh - 68px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .wormhole-side > p:not(.wormhole-rule) {
-  margin: 0;
+  margin: 10px 0 0;
   color: #8f879b;
   font-size: 11px;
 }
@@ -1992,6 +1999,7 @@ button:focus-visible {
 
 .radial-board {
   min-width: 0;
+  min-height: 0;
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2000,7 +2008,7 @@ button:focus-visible {
 
 .radial-board svg {
   width: 100%;
-  max-height: 505px;
+  max-height: min(505px, calc(100dvh - 112px));
   filter: drop-shadow(0 0 20px rgba(108, 54, 188, 0.22));
 }
 
@@ -2781,24 +2789,70 @@ button:focus-visible {
   }
 
   .wormhole-play {
+    height: calc(100dvh - 68px);
+    min-height: 0;
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
     align-items: start;
+    gap: 7px;
+    overflow: hidden;
+    padding: 8px 10px;
   }
 
   .wormhole-side {
-    padding-top: 8px;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 8px;
   }
 
-  .wormhole-side h2 {
-    font-size: 27px;
+  .wormhole-side > .beta-chip {
+    grid-column: 1;
+  }
+
+  .wormhole-side > p {
+    display: none;
+  }
+
+  .wormhole-score {
+    grid-column: 1;
+    margin: 0;
+  }
+
+  .wormhole-score span {
+    padding: 5px 7px;
+  }
+
+  .wormhole-score strong {
+    font-size: 15px;
+  }
+
+  .wormhole-mechanic-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
+  }
+
+  .wormhole-tools {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    width: min(220px, 42vw);
   }
 
   .radial-board {
+    height: 100%;
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    overflow: hidden;
   }
 
   .radial-board svg {
-    max-height: 470px;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
   }
 
   .radial-dpad {
@@ -2889,16 +2943,15 @@ button:focus-visible {
   }
 
   .wormhole-stage-grid em {
-    font-size: 6px;
-    letter-spacing: -0.04em;
+    font-size: 8px;
   }
 
   .wormhole-play {
-    padding: 12px 10px 20px;
+    padding: 7px 8px;
   }
 
   .wormhole-score {
-    margin: 12px 0 8px;
+    gap: 4px;
   }
 
   .wormhole-tools button {
@@ -2940,7 +2993,55 @@ button:focus-visible {
   }
 
   .wormhole-stage-grid em {
-    font-size: 5.5px;
+    font-size: 7px;
+  }
+}
+
+@media (max-width: 900px) and (max-height: 560px) {
+  .wormhole-mode.is-playing .wormhole-header {
+    min-height: 50px;
+    padding-block: 6px;
+  }
+
+  .wormhole-mode.is-playing .wormhole-play {
+    height: calc(100dvh - 50px);
+    grid-template-columns: minmax(170px, 0.55fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .wormhole-mode.is-playing .wormhole-side {
+    display: block;
+  }
+
+  .wormhole-mode.is-playing .wormhole-score {
+    margin: 8px 0;
+  }
+
+  .wormhole-mode.is-playing .wormhole-tools {
+    width: auto;
+  }
+
+  .wormhole-mode.is-playing .wormhole-mechanic-state {
+    display: none;
+  }
+
+  .wormhole-mode.is-playing .radial-board {
+    grid-template-columns: minmax(0, 1fr) 106px;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .wormhole-mode.is-playing .radial-dpad {
+    width: 106px;
+    grid-template-columns: repeat(3, 32px);
+    grid-template-rows: repeat(3, 32px);
+    gap: 3px;
+    margin: 0;
+  }
+
+  .wormhole-mode.is-playing .radial-dpad button {
+    width: 32px;
+    height: 32px;
   }
 }
 
