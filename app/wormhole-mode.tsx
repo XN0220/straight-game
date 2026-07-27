@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { starsFor } from "./game-engine";
 import {
-  RADIAL_RINGS,
+  INITIAL_RADIAL_STATE,
   RADIAL_SECTORS,
   WORMHOLE_STAGES,
   radialCellKey,
   radialSlide,
   type RadialCell,
   type RadialDirection,
+  type RadialState,
 } from "./wormhole-engine";
 
 const BEST_KEY = "straight-line-wormhole-bests-v1";
@@ -84,15 +85,24 @@ function tracePath(path: RadialCell[]) {
   }, `M ${first.x} ${first.y}`);
 }
 
-export function WormholeMode({ onClose }: { onClose: () => void }) {
+export function WormholeMode({
+  onClose,
+  avatarPixels,
+}: {
+  onClose: () => void;
+  avatarPixels: Array<string | null>;
+}) {
   const [screen, setScreen] = useState<ModeScreen>("select");
   const [stageIndex, setStageIndex] = useState(0);
   const [cell, setCell] = useState<RadialCell>({ ...WORMHOLE_STAGES[0].start });
+  const [runState, setRunState] = useState<RadialState>({ ...INITIAL_RADIAL_STATE });
   const [moves, setMoves] = useState(0);
   const [deaths, setDeaths] = useState(0);
   const [moving, setMoving] = useState(false);
   const [trace, setTrace] = useState<RadialCell[]>([]);
-  const [history, setHistory] = useState<Array<{ cell: RadialCell; moves: number }>>([]);
+  const [history, setHistory] = useState<
+    Array<{ cell: RadialCell; moves: number; runState: RadialState }>
+  >([]);
   const [bests, setBests] = useState<Array<number | null>>(
     Array(WORMHOLE_STAGES.length).fill(null),
   );
@@ -121,6 +131,7 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
     const next = WORMHOLE_STAGES[index];
     setStageIndex(index);
     setCell({ ...next.start });
+    setRunState({ ...INITIAL_RADIAL_STATE });
     setMoves(0);
     setDeaths(0);
     setMoving(false);
@@ -136,6 +147,7 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
       if (!snapshot) return previous;
       setCell({ ...snapshot.cell });
       setMoves(snapshot.moves);
+      setRunState({ ...snapshot.runState });
       setTrace([]);
       return previous.slice(0, -1);
     });
@@ -144,10 +156,13 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
   const move = useCallback(
     (direction: RadialDirection) => {
       if (screen !== "playing" || moving) return;
-      const plan = radialSlide(stage, cell, direction);
+      const plan = radialSlide(stage, cell, direction, runState);
       if (plan.outcome === "blocked") return;
 
-      setHistory((previous) => [...previous, { cell: { ...cell }, moves }]);
+      setHistory((previous) => [
+        ...previous,
+        { cell: { ...cell }, moves, runState: { ...runState } },
+      ]);
       setMoves((value) => value + 1);
       setMoving(true);
       setTrace([{ ...cell }, ...plan.path]);
@@ -158,6 +173,7 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
         if (plan.outcome === "goal") {
           const result = moves + 1;
           setCell({ ...plan.destination });
+          setRunState({ ...plan.state });
           setBests((previous) => {
             const next = [...previous];
             if (next[stageIndex] === null || result < (next[stageIndex] as number)) {
@@ -172,14 +188,16 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
         if (plan.outcome === "death" || plan.outcome === "loop") {
           setDeaths((value) => value + 1);
           setCell({ ...stage.start });
+          setRunState({ ...INITIAL_RADIAL_STATE });
           setMoves(0);
           setHistory([]);
           return;
         }
         setCell({ ...plan.destination });
+        setRunState({ ...plan.state });
       }, 330);
     },
-    [cell, moves, moving, screen, stage, stageIndex],
+    [cell, moves, moving, runState, screen, stage, stageIndex],
   );
 
   useEffect(() => {
@@ -236,7 +254,7 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
               <span />
             </div>
             <div>
-              <span className="beta-chip">실험 버전 · 5 MAPS</span>
+              <span className="beta-chip">실험 버전 · 30 MAPS</span>
               <h2>사각형 밖으로 휘어진 세계</h2>
               <p>
                 위·아래는 중심의 바깥·안쪽으로, 좌·우는 원주를 따라 회전합니다.
@@ -244,20 +262,32 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
               </p>
             </div>
           </div>
-          <div className="wormhole-stage-grid">
+          <div className="wormhole-stage-legend" aria-label="웜홀 난이도 구성">
+            <span>01–10 작은 맵 · 쉬움</span>
+            <span>11–15 확장 맵</span>
+            <span>16–20 포탈</span>
+            <span>21–30 포탈 + 온오프</span>
+          </div>
+          <div className="wormhole-stage-grid" aria-label="웜홀 30단계 선택">
             {WORMHOLE_STAGES.map((item, index) => {
               const stars = starsFor(bests[index], item.par);
               return (
-                <button key={item.id} type="button" onClick={() => start(index)}>
+                <button
+                  key={item.id}
+                  type="button"
+                  className={
+                    item.id >= 21 ? "is-master" : item.id >= 16 ? "has-portal" : ""
+                  }
+                  aria-label={`${item.id}번 ${item.name}, PAR ${item.par}, 별 ${stars}개`}
+                  onClick={() => start(index)}
+                >
                   <span>{String(item.id).padStart(2, "0")}</span>
-                  <strong>{item.name}</strong>
-                  <small>{item.subtitle}</small>
                   <em>PAR {item.par} · {"★".repeat(stars)}{"☆".repeat(3 - stars)}</em>
                 </button>
               );
             })}
           </div>
-          <p className="wormhole-total">BETA STAR {totalStars}/15 · 공식 캠페인 기록과 별도 저장</p>
+          <p className="wormhole-total">BETA STAR {totalStars}/90 · 공식 캠페인 기록과 별도 저장</p>
         </div>
       ) : (
         <div className="wormhole-play">
@@ -270,6 +300,17 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
               <span>PAR <strong>{stage.par}</strong></span>
               <span>RETRY <strong>{deaths}</strong></span>
             </div>
+            {stage.id >= 16 && (
+              <div className="wormhole-mechanic-state">
+                <span><i className="portal-dot" /> 같은 색 포탈 사이로 순간이동</span>
+                {stage.id >= 21 && (
+                  <span>
+                    <i className={runState.blocksOn ? "toggle-dot is-on" : "toggle-dot"} />
+                    온오프 블록 {runState.blocksOn ? "ON" : "OFF"}
+                  </span>
+                )}
+              </div>
+            )}
             <div className="wormhole-tools">
               <button type="button" disabled={history.length === 0 || moving} onClick={undo}>
                 ↶ 한 수 되돌리기
@@ -291,7 +332,7 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
                 </radialGradient>
               </defs>
               <circle className="radial-aura" cx={CENTER} cy={CENTER} r="285" />
-              {Array.from({ length: RADIAL_RINGS + 1 }, (_, ring) => (
+              {Array.from({ length: stage.ringCount + 1 }, (_, ring) => (
                 <circle
                   key={ring}
                   className="radial-grid-line"
@@ -303,7 +344,7 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
               {Array.from({ length: RADIAL_SECTORS }, (_, sector) => {
                 const start = polar(INNER_RADIUS, sector * (360 / RADIAL_SECTORS));
                 const end = polar(
-                  INNER_RADIUS + RADIAL_RINGS * RING_SIZE,
+                  INNER_RADIUS + stage.ringCount * RING_SIZE,
                   sector * (360 / RADIAL_SECTORS),
                 );
                 return (
@@ -326,6 +367,34 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
                   d={wedgePath(block)}
                 />
               ))}
+              {stage.toggleBlockCells.map((block) => (
+                <path
+                  key={`toggle-${radialCellKey(block)}`}
+                  className={`radial-toggle-block ${runState.blocksOn ? "is-on" : "is-off"}`}
+                  d={wedgePath(block)}
+                />
+              ))}
+              {stage.portals.map((portal, index) => (
+                <g
+                  key={`portal-${radialCellKey(portal)}`}
+                  className="radial-portal-cell"
+                  transform={`translate(${cellPoint(portal).x} ${cellPoint(portal).y})`}
+                >
+                  <circle r="12" />
+                  <circle r="7" />
+                  <text y="3">{index + 1}</text>
+                </g>
+              ))}
+              {stage.switchCells.map((switchCell) => (
+                <g
+                  key={`switch-${radialCellKey(switchCell)}`}
+                  className="radial-switch-cell"
+                  transform={`translate(${cellPoint(switchCell).x} ${cellPoint(switchCell).y})`}
+                >
+                  <rect x="-11" y="-11" width="22" height="22" rx="4" />
+                  <text y="4">ON</text>
+                </g>
+              ))}
               <path className="radial-goal" d={wedgePath(stage.goal, 3.4)} />
               {trace.length > 1 && (
                 <path className="radial-trace" d={tracePath(trace)} />
@@ -334,8 +403,23 @@ export function WormholeMode({ onClose }: { onClose: () => void }) {
                 className={"radial-player " + (moving ? "is-moving" : "")}
                 transform={`translate(${playerPoint.x} ${playerPoint.y})`}
               >
-                <circle r="13" />
-                <rect x="-7" y="-7" width="14" height="14" />
+                <rect className="radial-player-backdrop" x="-17" y="-17" width="34" height="34" rx="5" />
+                {avatarPixels.map((color, index) => {
+                  if (!color) return null;
+                  const col = index % 10;
+                  const row = Math.floor(index / 10);
+                  return (
+                    <rect
+                      key={index}
+                      className="radial-player-pixel"
+                      x={-15 + col * 3}
+                      y={-15 + row * 3}
+                      width="3.2"
+                      height="3.2"
+                      fill={color}
+                    />
+                  );
+                })}
               </g>
             </svg>
 
