@@ -30,6 +30,7 @@ import {
   type Point,
   type RunState,
 } from "./game-engine";
+import { WormholeMode } from "./wormhole-mode";
 
 type Screen = "menu" | "playing" | "won";
 type Pixel = string | null;
@@ -39,6 +40,12 @@ type ActiveMove = {
   outcome: "stop" | "goal" | "death" | "portal" | "switch" | "phase" | "break";
   destination?: Cell;
   nextState: RunState;
+};
+type MoveSnapshot = {
+  cell: Cell;
+  position: Point;
+  runState: RunState;
+  moves: number;
 };
 
 const AVATAR_GRID = 10;
@@ -55,12 +62,20 @@ const LEGACY_BEST_STORAGE_KEY = "straight-line-bests-v2";
 const MOVE_SPEED = 680;
 const TRAINING_SCENE_SCALE = 1.5;
 
-const DIRECTION_LABEL: Record<Direction, string> = {
-  up: "↑ 위",
-  down: "↓ 아래",
-  left: "← 왼쪽",
-  right: "→ 오른쪽",
-};
+function solutionCheckpoint(level: (typeof LEVELS)[number]) {
+  const targetMove = Math.max(1, Math.ceil(level.solution.length / 2));
+  let cell = { ...level.start };
+  let state = { ...INITIAL_RUN_STATE };
+
+  for (const direction of level.solution.slice(0, targetMove)) {
+    const plan = slide(level, cell, direction, state);
+    if (plan.outcome === "blocked" || plan.outcome === "death") break;
+    cell = { ...plan.destination };
+    state = { ...plan.state };
+  }
+
+  return { cell, targetMove };
+}
 
 const KEY_TO_DIRECTION: Record<string, Direction | undefined> = {
   ArrowUp: "up",
@@ -318,6 +333,7 @@ function AvatarEditor({
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gamePanelRef = useRef<HTMLDivElement>(null);
+  const stageSelectorRef = useRef<HTMLDivElement>(null);
   const positionRef = useRef<Point>(cellCenter(LEVELS[0].start));
   const cellRef = useRef<Cell>({ ...LEVELS[0].start });
   const stageIndexRef = useRef(0);
@@ -334,6 +350,7 @@ export default function Home() {
   const lastTrailRef = useRef(0);
   const moveCommandRef = useRef<(direction: Direction) => void>(() => {});
   const deathTimerRef = useRef<number | null>(null);
+  const moveHistoryRef = useRef<MoveSnapshot[]>([]);
   const avatarRef = useRef<Pixel[]>([...AVATAR_PRESETS[0].pixels]);
   const particlesRef = useRef<
     Array<Point & { vx: number; vy: number; life: number; color: string }>
@@ -344,6 +361,7 @@ export default function Home() {
   const [selectedStage, setSelectedStage] = useState(0);
   const [selectedChapter, setSelectedChapter] = useState(0);
   const [selectedPlanet, setSelectedPlanet] = useState(0);
+  const [lastPlayedStage, setLastPlayedStage] = useState<number | null>(null);
   const [moves, setMoves] = useState(0);
   const [deaths, setDeaths] = useState(0);
   const [runState, setRunState] = useState<RunState>({ ...INITIAL_RUN_STATE });
@@ -360,6 +378,8 @@ export default function Home() {
   const [isDead, setIsDead] = useState(false);
   const [newBest, setNewBest] = useState(false);
   const [hintVisible, setHintVisible] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [wormholeOpen, setWormholeOpen] = useState(false);
   const [avatarPixels, setAvatarPixels] = useState<Pixel[]>([...AVATAR_PRESETS[0].pixels]);
   const [draftPixels, setDraftPixels] = useState<Pixel[]>([...AVATAR_PRESETS[0].pixels]);
 
@@ -428,20 +448,17 @@ export default function Home() {
       const storedLastStage = Number(
         window.localStorage.getItem(LAST_STAGE_STORAGE_KEY) ?? "-1",
       );
-      const migratedLastStage = Math.max(
-        0,
-        Math.min(LEVELS.length - 1, unlockedValue - 1),
-      );
       const lastStagePlanet = Math.floor(storedLastStage / MAPS_PER_PLANET);
       const lastStageLocal = storedLastStage % MAPS_PER_PLANET;
       const canRestoreLastStage =
         storedLastStage >= 0 &&
         storedLastStage < LEVELS.length &&
         lastStageLocal < (safeUnlocks[lastStagePlanet] ?? 1);
-      const initialStage = canRestoreLastStage ? storedLastStage : migratedLastStage;
-      setSelectedStage(initialStage);
-      setSelectedChapter(Math.floor(initialStage / MAPS_PER_ZONE));
-      setSelectedPlanet(Math.floor(initialStage / MAPS_PER_PLANET));
+      setLastPlayedStage(canRestoreLastStage ? storedLastStage : null);
+      // 첫 화면의 선택은 항상 지구 연구실 1번입니다. 최근 맵은 이어하기에서만 사용합니다.
+      setSelectedStage(0);
+      setSelectedChapter(0);
+      setSelectedPlanet(0);
 
       const storedBests = JSON.parse(window.localStorage.getItem(BEST_STORAGE_KEY) ?? "null");
       const previousBests = JSON.parse(
@@ -531,6 +548,7 @@ export default function Home() {
       activeMoveRef.current = null;
       movingRef.current = false;
       dyingRef.current = false;
+      moveHistoryRef.current = [];
       trailRef.current = [];
       particlesRef.current = [];
       movesRef.current = 0;
@@ -539,12 +557,14 @@ export default function Home() {
       setSelectedChapter(Math.floor(safeIndex / 5));
       setSelectedPlanet(Math.floor(safeIndex / MAPS_PER_PLANET));
       window.localStorage.setItem(LAST_STAGE_STORAGE_KEY, String(safeIndex));
+      setLastPlayedStage(safeIndex);
       setMoves(0);
       setDeaths(0);
       setRunState({ ...INITIAL_RUN_STATE });
       setIsDead(false);
       setNewBest(false);
       setHintVisible(false);
+      setCanUndo(false);
       setBump(false);
       setGameScreen("playing");
       window.setTimeout(() => gamePanelRef.current?.focus(), 0);
@@ -565,10 +585,12 @@ export default function Home() {
     activeMoveRef.current = null;
     movingRef.current = false;
     dyingRef.current = false;
+    moveHistoryRef.current = [];
     trailRef.current = [];
     movesRef.current = 0;
     setMoves(0);
     setRunState({ ...INITIAL_RUN_STATE });
+    setCanUndo(false);
     setIsDead(false);
     window.setTimeout(() => gamePanelRef.current?.focus(), 0);
   }, []);
@@ -649,6 +671,30 @@ export default function Home() {
     setGameScreen("won");
   }, [playTone, setGameScreen]);
 
+  const undoMove = useCallback(() => {
+    if (
+      screenRef.current !== "playing" ||
+      movingRef.current ||
+      dyingRef.current
+    ) {
+      return;
+    }
+    const snapshot = moveHistoryRef.current.pop();
+    if (!snapshot) return;
+
+    cellRef.current = { ...snapshot.cell };
+    positionRef.current = { ...snapshot.position };
+    runStateRef.current = { ...snapshot.runState };
+    movesRef.current = snapshot.moves;
+    activeMoveRef.current = null;
+    trailRef.current = [];
+    setMoves(snapshot.moves);
+    setRunState({ ...snapshot.runState });
+    setCanUndo(moveHistoryRef.current.length > 0);
+    setHintVisible(false);
+    playTone(196, 0.07, "triangle");
+  }, [playTone]);
+
   const commandMove = useCallback(
     (direction: Direction) => {
       if (screenRef.current !== "playing" || movingRef.current || dyingRef.current) return;
@@ -669,6 +715,13 @@ export default function Home() {
         targets.push(cellCenter(plan.destination));
       }
 
+      moveHistoryRef.current.push({
+        cell: { ...cellRef.current },
+        position: { ...positionRef.current },
+        runState: { ...runStateRef.current },
+        moves: movesRef.current,
+      });
+      setCanUndo(true);
       activeMoveRef.current = {
         targets,
         targetIndex: 0,
@@ -697,6 +750,7 @@ export default function Home() {
         }
         return;
       }
+      if (wormholeOpen) return;
 
       const direction = KEY_TO_DIRECTION[event.key];
       if (direction) {
@@ -708,6 +762,14 @@ export default function Home() {
       if (event.key === "r" || event.key === "R") {
         if (screenRef.current !== "menu") startStage(stageIndexRef.current);
       }
+      if (
+        event.key === "u" ||
+        event.key === "U" ||
+        (event.ctrlKey && event.key.toLowerCase() === "z")
+      ) {
+        event.preventDefault();
+        undoMove();
+      }
       if (event.key === "Escape") returnToMenu();
       if (event.key === "Enter") {
         if (screenRef.current === "menu") startStage(selectedStage);
@@ -717,7 +779,16 @@ export default function Home() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [returnToMenu, selectedStage, showEditor, showHelp, startNextStage, startStage]);
+  }, [
+    returnToMenu,
+    selectedStage,
+    showEditor,
+    showHelp,
+    startNextStage,
+    startStage,
+    undoMove,
+    wormholeOpen,
+  ]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1205,27 +1276,22 @@ export default function Home() {
       sceneLevel.blockCells.forEach((block) => drawBlock(block, sceneLevel.planet, sceneAlpha));
 
       if (hintVisible && screenRef.current === "playing") {
-        const firstMove = slide(
-          sceneLevel,
-          sceneLevel.start,
-          sceneLevel.solution[0],
-          INITIAL_RUN_STATE,
-        );
-        if (firstMove.outcome !== "blocked" && firstMove.outcome !== "death") {
-          const hintTarget = cellCenter(
-            firstMove.outcome === "portal" ? firstMove.entry : firstMove.destination,
-          );
-          const pulse = 13 + Math.sin(performance.now() / 120) * 4;
-          context.save();
-          context.strokeStyle = PLANETS[sceneLevel.planet].secondary;
-          context.lineWidth = 4;
-          context.shadowColor = PLANETS[sceneLevel.planet].secondary;
-          context.shadowBlur = 18;
-          context.beginPath();
-          context.arc(hintTarget.x, hintTarget.y, pulse, 0, Math.PI * 2);
-          context.stroke();
-          context.restore();
-        }
+        const checkpoint = solutionCheckpoint(sceneLevel);
+        const hintTarget = cellCenter(checkpoint.cell);
+        const pulse = 13 + Math.sin(performance.now() / 120) * 4;
+        context.save();
+        context.strokeStyle = PLANETS[sceneLevel.planet].secondary;
+        context.lineWidth = 4;
+        context.shadowColor = PLANETS[sceneLevel.planet].secondary;
+        context.shadowBlur = 18;
+        context.beginPath();
+        context.arc(hintTarget.x, hintTarget.y, pulse, 0, Math.PI * 2);
+        context.stroke();
+        context.fillStyle = PLANETS[sceneLevel.planet].secondary;
+        context.font = '900 10px "Courier New", monospace';
+        context.textAlign = "center";
+        context.fillText("MID", hintTarget.x, hintTarget.y - 21);
+        context.restore();
       }
 
       if (screenRef.current !== "menu") {
@@ -1283,6 +1349,9 @@ export default function Home() {
   const currentChapterMeta = CHAPTERS[currentLevel.chapter];
   const selectedPlanetMeta = PLANETS[selectedPlanet];
   const currentPlanetMeta = PLANETS[currentLevel.planet];
+  const continueLevel =
+    lastPlayedStage === null ? null : LEVELS[lastPlayedStage];
+  const currentHintCheckpoint = solutionCheckpoint(currentLevel);
   const visibleLevels = LEVELS.slice(
     selectedChapter * MAPS_PER_ZONE,
     selectedChapter * MAPS_PER_ZONE + MAPS_PER_ZONE,
@@ -1340,6 +1409,13 @@ export default function Home() {
     setHintVisible(true);
     playTone(660, 0.08, "sine");
     window.setTimeout(() => playTone(880, 0.1, "sine"), 70);
+  };
+
+  const scrollToMapSelect = () => {
+    stageSelectorRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   };
 
   return (
@@ -1430,17 +1506,26 @@ export default function Home() {
             </div>
 
             <div className="game-tools">
-              {deaths >= 5 && (
+              {deaths >= 3 && (
                 <button
                   className={"hint-tool " + (hintVisible ? "is-active" : "")}
                   type="button"
                   onClick={revealHint}
-                  aria-label="첫 이동 힌트 보기"
-                  title="첫 이동 힌트"
+                  aria-label="최적 경로 중간 지점 힌트 보기"
+                  title="최적 경로 중간 지점"
                 >
                   ?
                 </button>
               )}
+              <button
+                type="button"
+                disabled={!canUndo}
+                onClick={undoMove}
+                aria-label="한 수 되돌리기"
+                title="한 수 되돌리기 (U 또는 Ctrl+Z)"
+              >
+                ↶
+              </button>
               <button type="button" onClick={() => startStage(stageIndexRef.current)} aria-label="현재 단계 다시 시작">
                 ↻
               </button>
@@ -1478,14 +1563,43 @@ export default function Home() {
                     쉬움 30개와 보통 90개, 총 120개 맵이 이어집니다.
                   </p>
                   <div className="menu-actions">
-                    <button className="primary-button" type="button" onClick={() => startStage(selectedStage)}>
-                      <span>스테이지 시작</span>
-                      <span aria-hidden="true">→</span>
+                    <button className="primary-button" type="button" onClick={scrollToMapSelect}>
+                      <span>맵 선택</span>
+                      <span aria-hidden="true">↓</span>
                     </button>
+                    <div className="continue-action">
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        disabled={continueLevel === null}
+                        onClick={() => {
+                          if (lastPlayedStage !== null) startStage(lastPlayedStage);
+                        }}
+                      >
+                        이어하기
+                      </button>
+                      <small>
+                        {continueLevel
+                          ? `${PLANETS[continueLevel.planet].shortName} ${continueLevel.localId}번 맵`
+                          : "아직 플레이 기록 없음"}
+                      </small>
+                    </div>
                     <button className="secondary-button" type="button" onClick={() => setShowHelp(true)}>
                       게임 정보
                     </button>
                   </div>
+                  <button
+                    className="wormhole-entry"
+                    type="button"
+                    onClick={() => setWormholeOpen(true)}
+                  >
+                    <span className="mini-wormhole" aria-hidden="true" />
+                    <span>
+                      <small>TEST LAB · BETA</small>
+                      <strong>웜홀: 휘어진 맵 실험 구역</strong>
+                    </span>
+                    <em>진입 →</em>
+                  </button>
                   <div className="menu-meta" aria-label="선택한 스테이지 정보">
                     <span>{selectedPlanetMeta.code} · MAP {String(selectedLevel.localId).padStart(2, "0")}</span>
                     <span className="meta-line" />
@@ -1516,7 +1630,11 @@ export default function Home() {
                 </aside>
               </div>
 
-              <div className="stage-selector" aria-label="난이도와 스테이지 선택">
+              <div
+                ref={stageSelectorRef}
+                className="stage-selector"
+                aria-label="난이도와 스테이지 선택"
+              >
                 <div className="stage-selector-heading">
                   <strong>DIFFICULTY &amp; MAP SELECT</strong>
                   <span>{selectedPlanetOpenCount}/{MAPS_PER_PLANET} OPEN · ★ {selectedPlanetStars}/90</span>
@@ -1639,8 +1757,24 @@ export default function Home() {
                     );
                   })}
                 </div>
+                <div className="stage-launch-row">
+                  <span>
+                    {selectedPlanetMeta.shortName} · {selectedLevel.localId}번 · PAR {selectedLevel.par}
+                  </span>
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={() => startStage(selectedStage)}
+                  >
+                    선택한 맵 시작 →
+                  </button>
+                </div>
               </div>
             </div>
+          )}
+
+          {wormholeOpen && (
+            <WormholeMode onClose={() => setWormholeOpen(false)} />
           )}
 
           {isDead && (
@@ -1715,9 +1849,11 @@ export default function Home() {
 
           {screen === "playing" && hintVisible && (
             <p className="footer-hint" role="status">
-              <span>FIRST MOVE</span>
-              <strong>{DIRECTION_LABEL[currentLevel.solution[0]]}</strong>
-              <small>빛나는 정지점을 이용하세요</small>
+              <span>MID CHECKPOINT</span>
+              <strong>
+                최적 경로 {currentHintCheckpoint.targetMove}/{currentLevel.par}수 지점
+              </strong>
+              <small>빛나는 위치를 중간 목표로 삼으세요</small>
             </p>
           )}
 
@@ -1787,21 +1923,21 @@ export default function Home() {
                 <span>05</span>
                 <div>
                   <h3>기록을 줄여 별 3개를 모으세요</h3>
-                  <p>최단 이동은 별 3개, 최단보다 2회 이내는 별 2개, 클리어하면 별 1개를 받습니다.</p>
+                  <p>최단 이동은 별 3개, 최단보다 10회 이내는 별 2개, 그보다 많으면 별 1개를 받습니다.</p>
                 </div>
               </article>
               <article>
                 <span>06</span>
                 <div>
-                  <h3>막히면 첫 이동 힌트를 쓰세요</h3>
-                  <p>같은 맵에서 경계에 5번 부딪히면 상단의 ? 버튼으로 첫 방향과 첫 정지점을 볼 수 있습니다.</p>
+                  <h3>되돌리거나 중간 지점을 확인하세요</h3>
+                  <p>↶ 버튼·U·Ctrl+Z로 한 수를 되돌릴 수 있습니다. 같은 맵에서 경계에 3번 부딪히면 ? 버튼이 최적 경로의 절반 지점을 표시합니다.</p>
                 </div>
               </article>
               <article>
                 <span>07</span>
                 <div>
-                  <h3>120개 맵은 모두 자동 검증됐습니다</h3>
-                  <p>각 맵의 최단 경로와 행성별 필수 기믹 사용 여부를 게임이 시작될 때 다시 확인합니다.</p>
+                  <h3>공식 120맵과 웜홀 베타 5맵</h3>
+                  <p>공식 맵은 최단 경로와 필수 기믹을 자동 검증합니다. 메인의 웜홀에서는 원형 좌표로 움직이는 별도 실험 스테이지를 플레이할 수 있습니다.</p>
                 </div>
               </article>
             </div>

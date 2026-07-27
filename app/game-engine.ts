@@ -751,6 +751,6 @@ export const LEVELS: Level[] = ALL_ROWS.map(buildLevel);
 export function starsFor(best: number | null, par: number) {
   if (best === null) return 0;
   if (best <= par) return 3;
-  if (best <= par + 2) return 2;
+  if (best <= par + 10) return 2;
   return 1;
 }

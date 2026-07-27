@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const developmentPreviewMeta =
@@ -76,4 +77,17 @@ test("renders the Earth training and three-planet campaign shell", async () => {
   assert.match(html, /기어라/);
   assert.match(html, /프리즘/);
   assert.doesNotMatch(html, /기록 공유/);
+});
+
+test("renders undo, continue, midpoint hint, and wormhole beta entry points", async () => {
+  const html = await renderHome();
+  assert.match(html, /맵 선택/);
+  assert.match(html, /이어하기/);
+  assert.match(html, /게임 정보/);
+  assert.match(html, /웜홀: 휘어진 맵 실험 구역/);
+
+  const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(pageSource, /한 수 되돌리기/);
+  assert.match(pageSource, /최적 경로의 절반 지점/);
+  assert.match(pageSource, /최단보다 10회 이내/);
 });
