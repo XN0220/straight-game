@@ -91,3 +91,24 @@ test("renders undo, continue, midpoint hint, and wormhole beta entry points", as
   assert.match(pageSource, /최적 경로의 절반 지점/);
   assert.match(pageSource, /최단보다 10회 이내/);
 });
+
+test("defines the 30-map wormhole campaign and keypad map selector", async () => {
+  const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const wormholeSource = await readFile(
+    new URL("../app/wormhole-engine.ts", import.meta.url),
+    "utf8",
+  );
+  const wormholeModeSource = await readFile(
+    new URL("../app/wormhole-mode.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(pageSource, /planet-keypad-tabs/);
+  assert.match(pageSource, /stage-keypad/);
+  assert.match(pageSource, /avatarPixels=\{avatarPixels\}/);
+  assert.match(wormholeSource, /Array\.from\(\{ length: 30 \}/);
+  assert.match(wormholeSource, /stage\.id >= 16 && !solution\.features\.has\("portal"\)/);
+  assert.match(wormholeSource, /stage\.id >= 21 && !solution\.features\.has\("toggle"\)/);
+  assert.match(wormholeModeSource, /실험 버전 · 30 MAPS/);
+  assert.match(wormholeModeSource, /radial-player-pixel/);
+});
