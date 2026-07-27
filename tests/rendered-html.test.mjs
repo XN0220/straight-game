@@ -102,6 +102,7 @@ test("defines the 30-map wormhole campaign and keypad map selector", async () =>
     new URL("../app/wormhole-mode.tsx", import.meta.url),
     "utf8",
   );
+  const globalCssSource = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 
   assert.match(pageSource, /planet-keypad-tabs/);
   assert.match(pageSource, /stage-keypad/);
@@ -122,5 +123,7 @@ test("defines the 30-map wormhole campaign and keypad map selector", async () =>
   assert.doesNotMatch(wormholeModeSource, /<em>PAR \{item\.par\}/);
   assert.match(wormholeModeSource, /aria-label=\{`\$\{item\.id\}번, 별 \$\{stars\}개`\}/);
   assert.match(wormholeModeSource, /wormhole-mode \$\{screen === "select" \? "is-selecting" : "is-playing"\}/);
+  assert.match(globalCssSource, /\.wormhole-mode\.is-playing\s*\{[^}]*overflow-y:\s*auto/s);
+  assert.doesNotMatch(globalCssSource, /\.wormhole-mode\.is-playing\s*\{[^}]*overflow:\s*hidden/s);
   assert.match(wormholeModeSource, /stored\.slice\(0, WORMHOLE_STAGES\.length\)/);
 });
