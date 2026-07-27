@@ -1719,6 +1719,7 @@ button:focus-visible {
 }
 
 .wormhole-header > div {
+  min-width: 0;
   display: grid;
   gap: 5px;
 }
@@ -1737,6 +1738,7 @@ button:focus-visible {
 .wormhole-header button,
 .wormhole-tools button,
 .wormhole-win button {
+  min-width: 0;
   min-height: 36px;
   padding: 0 14px;
   border: 1px solid rgba(169, 135, 255, 0.38);
@@ -1744,6 +1746,8 @@ button:focus-visible {
   color: #e6ddff;
   font-size: 10px;
   font-weight: 900;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
   cursor: pointer;
 }
 
@@ -1847,6 +1851,7 @@ button:focus-visible {
   gap: 5px;
   padding: 9px 11px;
   text-align: left;
+  overflow: hidden;
   border: 1px solid rgba(169,135,255,0.2);
   background: rgba(255,255,255,0.025);
   cursor: pointer;
@@ -1872,8 +1877,10 @@ button:focus-visible {
 }
 
 .wormhole-stage-grid em {
+  max-width: 100%;
   color: #d6c7ff;
   font: normal 800 8px/1 "Courier New", monospace;
+  white-space: nowrap;
 }
 
 .wormhole-total {
@@ -1973,7 +1980,8 @@ button:focus-visible {
 }
 
 .wormhole-tools {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 7px;
 }
 
@@ -2117,33 +2125,53 @@ button:focus-visible {
 }
 
 .radial-dpad {
-  width: 145px;
+  width: 136px;
   display: grid;
-  grid-template-columns: repeat(3, 43px);
+  grid-template-columns: repeat(3, 42px);
+  grid-template-rows: repeat(3, 42px);
   justify-content: center;
   gap: 5px;
 }
 
 .radial-dpad button {
-  width: 43px;
-  height: 43px;
-  display: grid;
-  place-items: center;
-  padding: 3px;
-  border: 1px solid rgba(169,135,255,0.34);
-  background: rgba(169,135,255,0.08);
-  font-size: 16px;
+  min-width: 0;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid #3d3150;
+  border-bottom-width: 3px;
+  background: #171020;
+  color: #f8f4ff;
+  font-size: 18px;
+  line-height: 1;
   cursor: pointer;
 }
 
-.radial-dpad button:first-child,
-.radial-dpad button:last-child {
+.radial-dpad .radial-up {
   grid-column: 2;
+  grid-row: 1;
 }
 
-.radial-dpad button small {
-  color: #837a91;
-  font-size: 6px;
+.radial-dpad .radial-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.radial-dpad > span {
+  grid-column: 2;
+  grid-row: 2;
+  border: 1px solid #30263e;
+  background: rgba(169,135,255,0.035);
+}
+
+.radial-dpad .radial-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.radial-dpad .radial-down {
+  grid-column: 2;
+  grid-row: 3;
 }
 
 .wormhole-win {
@@ -2774,7 +2802,7 @@ button:focus-visible {
   }
 
   .radial-dpad {
-    margin: -28px auto 0;
+    margin: 8px auto 0;
   }
 }
 
@@ -2862,6 +2890,7 @@ button:focus-visible {
 
   .wormhole-stage-grid em {
     font-size: 6px;
+    letter-spacing: -0.04em;
   }
 
   .wormhole-play {
@@ -2874,7 +2903,44 @@ button:focus-visible {
 
   .wormhole-tools button {
     min-width: 0;
-    padding: 0 9px;
+    padding: 7px 5px;
+    font-size: 9px;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 360px) {
+  .wormhole-header {
+    gap: 8px;
+    padding-inline: 9px;
+  }
+
+  .wormhole-header span {
+    font-size: 6px;
+    letter-spacing: 0.08em;
+  }
+
+  .wormhole-header strong {
+    font-size: 12px;
+  }
+
+  .wormhole-header button {
+    flex: 0 0 auto;
+    max-width: 98px;
+    padding-inline: 8px;
+    font-size: 8px;
+  }
+
+  .wormhole-stage-grid {
+    gap: 4px;
+  }
+
+  .wormhole-stage-grid button {
+    padding-inline: 2px;
+  }
+
+  .wormhole-stage-grid em {
+    font-size: 5.5px;
   }
 }
 

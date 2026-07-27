@@ -428,11 +428,11 @@ export function WormholeMode({
             </svg>
 
             <div className="radial-dpad" aria-label="웜홀 방향 조작">
-              <button type="button" onClick={() => move("out")}>↑<small>바깥</small></button>
-              <button type="button" onClick={() => move("ccw")}>←<small>반시계</small></button>
-              <span />
-              <button type="button" onClick={() => move("cw")}>→<small>시계</small></button>
-              <button type="button" onClick={() => move("in")}>↓<small>중심</small></button>
+              <button className="radial-up" type="button" aria-label="중심 바깥 방향으로 이동" onClick={() => move("out")}>↑</button>
+              <button className="radial-left" type="button" aria-label="반시계 방향으로 이동" onClick={() => move("ccw")}>←</button>
+              <span aria-hidden="true" />
+              <button className="radial-right" type="button" aria-label="시계 방향으로 이동" onClick={() => move("cw")}>→</button>
+              <button className="radial-down" type="button" aria-label="원 중심 방향으로 이동" onClick={() => move("in")}>↓</button>
             </div>
           </div>
 
