@@ -1643,19 +1643,6 @@ export default function Home() {
                         </button>
                       );
                     })}
-                    <button
-                      className="planet-key wormhole-planet-key"
-                      type="button"
-                      onClick={() => {
-                        setMapSelectOpen(false);
-                        setWormholeOpen(true);
-                      }}
-                    >
-                      <span className="planet-image" aria-hidden="true" />
-                      <small>베타</small>
-                      <strong>곡률 행성 에테르</strong>
-                      <em>30 MAPS →</em>
-                    </button>
                   </div>
                   <div className="map-keypad-heading">
                     <div>
