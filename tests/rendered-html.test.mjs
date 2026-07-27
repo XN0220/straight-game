@@ -111,4 +111,5 @@ test("defines the 30-map wormhole campaign and keypad map selector", async () =>
   assert.match(wormholeSource, /stage\.id >= 21 && !solution\.features\.has\("toggle"\)/);
   assert.match(wormholeModeSource, /실험 버전 · 30 MAPS/);
   assert.match(wormholeModeSource, /radial-player-pixel/);
+  assert.match(wormholeModeSource, /stored\.slice\(0, WORMHOLE_STAGES\.length\)/);
 });
