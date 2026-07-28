@@ -84,10 +84,18 @@ test("renders undo, continue, midpoint hint, and wormhole beta entry points", as
   assert.match(html, /맵 선택/);
   assert.match(html, /이어하기/);
   assert.match(html, /게임 정보/);
-  assert.match(html, /웜홀: 원형·육각형 실험 구역/);
+  assert.match(html, /웜홀 : 미지의 구역/);
 
   const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const speedControlSource = await readFile(
+    new URL("../app/speed-control.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(pageSource, /한 수 되돌리기/);
+  assert.match(pageSource, /MOVE_SPEED \* moveSpeedRef\.current/);
+  assert.match(speedControlSource, /X1\.5/);
+  assert.match(speedControlSource, /X2/);
+  assert.match(speedControlSource, /nextMoveSpeed/);
   assert.match(pageSource, /최적 경로의 절반 지점/);
   assert.match(pageSource, /최단보다 10회 이내/);
 });
@@ -116,6 +124,7 @@ test("defines the two 30-map wormhole campaigns and keypad map selectors", async
   assert.match(wormholeSource, /stage\.id >= 21 && !solution\.features\.has\("toggle"\)/);
   assert.match(wormholeModeSource, /실험 버전 · 30 MAPS/);
   assert.match(wormholeModeSource, /육각 성운 헥사리움/);
+  assert.match(wormholeModeSource, /330 \/ moveSpeed/);
   assert.match(wormholeModeSource, /2 EXPERIMENTS · 60 MAPS/);
   assert.match(wormholeModeSource, /radial-player-pixel/);
   assert.match(wormholeModeSource, /className="radial-up"/);
@@ -126,7 +135,8 @@ test("defines the two 30-map wormhole campaigns and keypad map selectors", async
   assert.doesNotMatch(wormholeModeSource, /<h2>\{stage\.name\}<\/h2>/);
   assert.doesNotMatch(wormholeModeSource, /<em>PAR \{item\.par\}/);
   assert.match(wormholeModeSource, /aria-label=\{`\$\{item\.id\}번, 별 \$\{stars\}개`\}/);
-  assert.match(wormholeModeSource, /wormhole-mode \$\{screen === "select" \? "is-selecting" : "is-playing"\}/);
+  assert.match(wormholeModeSource, /wormhole-mode speed-\$\{String\(moveSpeed\)/);
+  assert.match(wormholeModeSource, /\$\{screen === "select" \? "is-selecting" : "is-playing"\}/);
   assert.match(globalCssSource, /\.wormhole-mode\.is-playing\s*\{[^}]*overflow-y:\s*auto/s);
   assert.doesNotMatch(globalCssSource, /\.wormhole-mode\.is-playing\s*\{[^}]*overflow:\s*hidden/s);
   assert.match(wormholeModeSource, /stored\.slice\(0, WORMHOLE_STAGES\.length\)/);
@@ -134,6 +144,7 @@ test("defines the two 30-map wormhole campaigns and keypad map selectors", async
   assert.match(hexSource, /stage\.id >= 21 && !solution\.features\.has\("portal"\)/);
   assert.match(hexSource, /stage\.id >= 26 && !solution\.features\.has\("switch"\)/);
   assert.match(hexModeSource, /Q·E \/ A·D \/ Z·C/);
+  assert.match(hexModeSource, /320 \/ moveSpeed/);
   assert.match(hexModeSource, /className="hex-nw"/);
   assert.match(hexModeSource, /className="hex-ne"/);
   assert.match(hexModeSource, /className="hex-w"/);
