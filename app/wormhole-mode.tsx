@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { starsFor } from "./game-engine";
+import { HEX_STAGES } from "./hex-engine";
+import { HEX_BEST_KEY, HexMode } from "./hex-mode";
 import {
   INITIAL_RADIAL_STATE,
   RADIAL_SECTORS,
@@ -19,6 +21,7 @@ const RING_SIZE = 31;
 const CENTER = 300;
 
 type ModeScreen = "select" | "playing" | "won";
+type LabCampaign = "hub" | "radial" | "hex";
 
 const KEY_DIRECTION: Record<string, RadialDirection | undefined> = {
   ArrowUp: "out",
@@ -92,6 +95,7 @@ export function WormholeMode({
   onClose: () => void;
   avatarPixels: Array<string | null>;
 }) {
+  const [labCampaign, setLabCampaign] = useState<LabCampaign>("hub");
   const [screen, setScreen] = useState<ModeScreen>("select");
   const [stageIndex, setStageIndex] = useState(0);
   const [cell, setCell] = useState<RadialCell>({ ...WORMHOLE_STAGES[0].start });
@@ -106,6 +110,9 @@ export function WormholeMode({
   const [bests, setBests] = useState<Array<number | null>>(
     Array(WORMHOLE_STAGES.length).fill(null),
   );
+  const [hexBests, setHexBests] = useState<Array<number | null>>(
+    Array(HEX_STAGES.length).fill(null),
+  );
   const timerRef = useRef<number | null>(null);
   const stage = WORMHOLE_STAGES[stageIndex];
 
@@ -119,6 +126,14 @@ export function WormholeMode({
             restored[index] = typeof value === "number" ? value : null;
           });
           setBests(restored);
+        }
+        const storedHex = JSON.parse(window.localStorage.getItem(HEX_BEST_KEY) ?? "null");
+        if (Array.isArray(storedHex)) {
+          const restoredHex = Array<number | null>(HEX_STAGES.length).fill(null);
+          storedHex.slice(0, HEX_STAGES.length).forEach((value, index) => {
+            restoredHex[index] = typeof value === "number" ? value : null;
+          });
+          setHexBests(restoredHex);
         }
       } catch {
         // 손상된 베타 기록은 공식 캠페인과 분리된 기본값으로 대체합니다.
@@ -206,9 +221,10 @@ export function WormholeMode({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (labCampaign !== "radial") return;
       event.stopImmediatePropagation();
       if (event.key === "Escape") {
-        if (screen === "select") onClose();
+        if (screen === "select") setLabCampaign("hub");
         else setScreen("select");
         return;
       }
@@ -225,7 +241,7 @@ export function WormholeMode({
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [move, onClose, screen, undo]);
+  }, [labCampaign, move, screen, undo]);
 
   const totalStars = useMemo(
     () =>
@@ -235,7 +251,99 @@ export function WormholeMode({
       ),
     [bests],
   );
+  const totalHexStars = useMemo(
+    () =>
+      hexBests.reduce<number>(
+        (sum, best, index) => sum + starsFor(best, HEX_STAGES[index].par),
+        0,
+      ),
+    [hexBests],
+  );
   const playerPoint = cellPoint(cell);
+
+  if (labCampaign === "hex") {
+    return (
+      <HexMode
+        avatarPixels={avatarPixels}
+        onClose={() => {
+          try {
+            const storedHex = JSON.parse(window.localStorage.getItem(HEX_BEST_KEY) ?? "null");
+            if (Array.isArray(storedHex)) {
+              const restoredHex = Array<number | null>(HEX_STAGES.length).fill(null);
+              storedHex.slice(0, HEX_STAGES.length).forEach((value, index) => {
+                restoredHex[index] = typeof value === "number" ? value : null;
+              });
+              setHexBests(restoredHex);
+            }
+          } catch {
+            // 손상된 실험 기록은 카드의 기본값으로 대체합니다.
+          }
+          setLabCampaign("hub");
+        }}
+      />
+    );
+  }
+
+  if (labCampaign === "hub") {
+    return (
+      <div
+        className="wormhole-mode lab-hub"
+        role="dialog"
+        aria-modal="true"
+        aria-label="웜홀 테스트 랩"
+      >
+        <header className="wormhole-header">
+          <div>
+            <span>WORMHOLE TEST LAB · BETA</span>
+            <strong>실험 구역을 선택하세요</strong>
+          </div>
+          <button type="button" onClick={onClose}>공식 스테이지로</button>
+        </header>
+        <div className="lab-hub-content">
+          <div className="lab-hub-heading">
+            <span className="beta-chip">2 EXPERIMENTS · 60 MAPS</span>
+            <h2>사각형 밖의 직진 규칙</h2>
+            <p>모양과 이동 축이 완전히 다른 실험 스테이지입니다. 구역을 고른 뒤 기존 맵 선택과 같은 방식으로 번호를 선택하세요.</p>
+          </div>
+          <div className="lab-campaign-grid">
+            <button
+              className="lab-campaign-card radial-campaign-card"
+              type="button"
+              onClick={() => {
+                setScreen("select");
+                setLabCampaign("radial");
+              }}
+            >
+              <span className="lab-planet-image radial-lab-image" aria-hidden="true">
+                <i /><i /><i />
+              </span>
+              <span className="lab-card-copy">
+                <small>CURVED GRID · 30 MAPS</small>
+                <strong>곡률 행성 에테르</strong>
+                <em>중심과 원주를 따라 휘어지는 원형 직진</em>
+              </span>
+              <span className="lab-card-score">★ {totalStars}/90</span>
+            </button>
+            <button
+              className="lab-campaign-card hex-campaign-card"
+              type="button"
+              onClick={() => setLabCampaign("hex")}
+            >
+              <span className="lab-planet-image hex-lab-image" aria-hidden="true">
+                {Array.from({ length: 7 }, (_, index) => <i key={index} />)}
+              </span>
+              <span className="lab-card-copy">
+                <small>HEX GRID · 30 MAPS</small>
+                <strong>육각 성운 헥사리움</strong>
+                <em>여섯 갈래 직진과 빛나는 벌집형 경로</em>
+              </span>
+              <span className="lab-card-score">★ {totalHexStars}/90</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -249,8 +357,8 @@ export function WormholeMode({
           <span>WORMHOLE TEST LAB · BETA</span>
           <strong>곡률 행성 에테르</strong>
         </div>
-        <button type="button" onClick={screen === "select" ? onClose : () => setScreen("select")}>
-          {screen === "select" ? "공식 스테이지로" : "베타 맵 선택"}
+        <button type="button" onClick={screen === "select" ? () => setLabCampaign("hub") : () => setScreen("select")}>
+          {screen === "select" ? "실험 구역 선택" : "베타 맵 선택"}
         </button>
       </header>
 
