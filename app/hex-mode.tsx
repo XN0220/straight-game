@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { starsFor } from "./game-engine";
+import { SpeedControl, type MoveSpeed } from "./speed-control";
 import {
   HEX_STAGES,
   INITIAL_HEX_STATE,
@@ -86,6 +87,7 @@ export function HexMode({
   const [moves, setMoves] = useState(0);
   const [deaths, setDeaths] = useState(0);
   const [moving, setMoving] = useState(false);
+  const [moveSpeed, setMoveSpeed] = useState<MoveSpeed>(1);
   const [trace, setTrace] = useState<HexCell[]>([]);
   const [history, setHistory] = useState<Snapshot[]>([]);
   const [bests, setBests] = useState<Array<number | null>>(
@@ -183,9 +185,9 @@ export function HexMode({
         }
         setCell({ ...plan.destination });
         setRunState({ ...plan.state });
-      }, 320);
+      }, 320 / moveSpeed);
     },
-    [cell, moves, moving, runState, screen, stage, stageIndex],
+    [cell, moveSpeed, moves, moving, runState, screen, stage, stageIndex],
   );
 
   useEffect(() => {
@@ -223,7 +225,7 @@ export function HexMode({
 
   return (
     <div
-      className={`wormhole-mode hex-mode ${screen === "select" ? "is-selecting" : "is-playing"}`}
+      className={`wormhole-mode hex-mode speed-${String(moveSpeed).replace(".", "-")} ${screen === "select" ? "is-selecting" : "is-playing"}`}
       role="dialog"
       aria-modal="true"
       aria-label="육각 성운 헥사리움"
@@ -314,6 +316,7 @@ export function HexMode({
                 ↶ 한 수 되돌리기
               </button>
               <button type="button" onClick={() => start(stageIndex)}>↻ 다시 시작</button>
+              <SpeedControl speed={moveSpeed} onChange={setMoveSpeed} />
             </div>
             <p className="wormhole-rule hex-key-rule">
               PC: Q·E / A·D / Z·C · 숫자패드 7·9 / 4·6 / 1·3
