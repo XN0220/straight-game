@@ -30,6 +30,7 @@ import {
   type Point,
   type RunState,
 } from "./game-engine";
+import { SpeedControl, type MoveSpeed } from "./speed-control";
 import { WormholeMode } from "./wormhole-mode";
 
 type Screen = "menu" | "playing" | "won";
@@ -351,6 +352,7 @@ export default function Home() {
   const deathTimerRef = useRef<number | null>(null);
   const moveHistoryRef = useRef<MoveSnapshot[]>([]);
   const avatarRef = useRef<Pixel[]>([...AVATAR_PRESETS[0].pixels]);
+  const moveSpeedRef = useRef<MoveSpeed>(1);
   const particlesRef = useRef<
     Array<Point & { vx: number; vy: number; life: number; color: string }>
   >([]);
@@ -372,6 +374,7 @@ export default function Home() {
   const [showHelp, setShowHelp] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
+  const [moveSpeed, setMoveSpeed] = useState<MoveSpeed>(1);
   const [bump, setBump] = useState(false);
   const [isDead, setIsDead] = useState(false);
   const [newBest, setNewBest] = useState(false);
@@ -1126,7 +1129,7 @@ export default function Home() {
         const deltaX = target.x - positionRef.current.x;
         const deltaY = target.y - positionRef.current.y;
         const distance = Math.hypot(deltaX, deltaY);
-        const travel = MOVE_SPEED * rawDelta;
+        const travel = MOVE_SPEED * moveSpeedRef.current * rawDelta;
 
         if (distance <= travel || distance < 0.5) {
           positionRef.current = { ...target };
@@ -1502,6 +1505,13 @@ export default function Home() {
               <button type="button" onClick={() => startStage(stageIndexRef.current)} aria-label="현재 단계 다시 시작">
                 ↻
               </button>
+              <SpeedControl
+                speed={moveSpeed}
+                onChange={(nextSpeed) => {
+                  moveSpeedRef.current = nextSpeed;
+                  setMoveSpeed(nextSpeed);
+                }}
+              />
               <button type="button" onClick={returnToMenu} aria-label="메뉴로 돌아가기">
                 ×
               </button>
@@ -1574,7 +1584,7 @@ export default function Home() {
                     <span className="mini-wormhole" aria-hidden="true" />
                     <span>
                       <small>TEST LAB · BETA</small>
-                      <strong>웜홀: 원형·육각형 실험 구역</strong>
+                      <strong>웜홀 : 미지의 구역</strong>
                     </span>
                     <em>진입 →</em>
                   </button>
