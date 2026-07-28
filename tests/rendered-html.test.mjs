@@ -100,7 +100,7 @@ test("renders undo, continue, midpoint hint, and wormhole beta entry points", as
   assert.match(pageSource, /최단보다 10회 이내/);
 });
 
-test("defines the two 30-map wormhole campaigns and keypad map selectors", async () => {
+test("defines the three 30-map wormhole campaigns and keypad map selectors", async () => {
   const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const wormholeSource = await readFile(
     new URL("../app/wormhole-engine.ts", import.meta.url),
@@ -112,6 +112,8 @@ test("defines the two 30-map wormhole campaigns and keypad map selectors", async
   );
   const hexSource = await readFile(new URL("../app/hex-engine.ts", import.meta.url), "utf8");
   const hexModeSource = await readFile(new URL("../app/hex-mode.tsx", import.meta.url), "utf8");
+  const twinSource = await readFile(new URL("../app/twin-engine.ts", import.meta.url), "utf8");
+  const twinModeSource = await readFile(new URL("../app/twin-mode.tsx", import.meta.url), "utf8");
   const globalCssSource = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 
   assert.match(pageSource, /planet-keypad-tabs/);
@@ -125,7 +127,8 @@ test("defines the two 30-map wormhole campaigns and keypad map selectors", async
   assert.match(wormholeModeSource, /실험 버전 · 30 MAPS/);
   assert.match(wormholeModeSource, /육각 성운 헥사리움/);
   assert.match(wormholeModeSource, /330 \/ moveSpeed/);
-  assert.match(wormholeModeSource, /2 EXPERIMENTS · 60 MAPS/);
+  assert.match(wormholeModeSource, /3 EXPERIMENTS · 90 MAPS/);
+  assert.match(wormholeModeSource, /쌍성계 제미니아/);
   assert.match(wormholeModeSource, /radial-player-pixel/);
   assert.match(wormholeModeSource, /className="radial-up"/);
   assert.match(wormholeModeSource, /className="radial-left"/);
@@ -151,4 +154,12 @@ test("defines the two 30-map wormhole campaigns and keypad map selectors", async
   assert.match(hexModeSource, /className="hex-e"/);
   assert.match(hexModeSource, /className="hex-sw"/);
   assert.match(hexModeSource, /className="hex-se"/);
+  assert.match(twinSource, /Array\.from\(\{ length: 30 \}/);
+  assert.match(twinSource, /stage\.par - HEX_STAGES\[stage\.id - 1\]\.par/);
+  assert.match(twinSource, /offset < 2 \|\| offset > 4/);
+  assert.doesNotMatch(twinSource, /portal|wormhole/i);
+  assert.match(twinModeSource, /두 캐릭터가 모두 멈춘 뒤 다음 입력/);
+  assert.match(twinSource, /state\.leftDone \|\| left\.outcome === "goal"/);
+  assert.match(twinModeSource, /initialTwinState/);
+  assert.match(twinModeSource, /ARRIVE/);
 });

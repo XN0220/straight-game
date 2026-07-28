@@ -5,6 +5,8 @@ import { starsFor } from "./game-engine";
 import { HEX_STAGES } from "./hex-engine";
 import { HEX_BEST_KEY, HexMode } from "./hex-mode";
 import { SpeedControl, type MoveSpeed } from "./speed-control";
+import { TWIN_STAGES } from "./twin-engine";
+import { TWIN_BEST_KEY, TwinMode } from "./twin-mode";
 import {
   INITIAL_RADIAL_STATE,
   RADIAL_SECTORS,
@@ -22,7 +24,7 @@ const RING_SIZE = 31;
 const CENTER = 300;
 
 type ModeScreen = "select" | "playing" | "won";
-type LabCampaign = "hub" | "radial" | "hex";
+type LabCampaign = "hub" | "radial" | "hex" | "twin";
 
 const KEY_DIRECTION: Record<string, RadialDirection | undefined> = {
   ArrowUp: "out",
@@ -115,6 +117,9 @@ export function WormholeMode({
   const [hexBests, setHexBests] = useState<Array<number | null>>(
     Array(HEX_STAGES.length).fill(null),
   );
+  const [twinBests, setTwinBests] = useState<Array<number | null>>(
+    Array(TWIN_STAGES.length).fill(null),
+  );
   const timerRef = useRef<number | null>(null);
   const stage = WORMHOLE_STAGES[stageIndex];
 
@@ -136,6 +141,14 @@ export function WormholeMode({
             restoredHex[index] = typeof value === "number" ? value : null;
           });
           setHexBests(restoredHex);
+        }
+        const storedTwin = JSON.parse(window.localStorage.getItem(TWIN_BEST_KEY) ?? "null");
+        if (Array.isArray(storedTwin)) {
+          const restoredTwin = Array<number | null>(TWIN_STAGES.length).fill(null);
+          storedTwin.slice(0, TWIN_STAGES.length).forEach((value, index) => {
+            restoredTwin[index] = typeof value === "number" ? value : null;
+          });
+          setTwinBests(restoredTwin);
         }
       } catch {
         // 손상된 베타 기록은 공식 캠페인과 분리된 기본값으로 대체합니다.
@@ -261,6 +274,14 @@ export function WormholeMode({
       ),
     [hexBests],
   );
+  const totalTwinStars = useMemo(
+    () =>
+      twinBests.reduce<number>(
+        (sum, best, index) => sum + starsFor(best, TWIN_STAGES[index].par),
+        0,
+      ),
+    [twinBests],
+  );
   const playerPoint = cellPoint(cell);
 
   if (labCampaign === "hex") {
@@ -276,6 +297,29 @@ export function WormholeMode({
                 restoredHex[index] = typeof value === "number" ? value : null;
               });
               setHexBests(restoredHex);
+            }
+          } catch {
+            // 손상된 실험 기록은 카드의 기본값으로 대체합니다.
+          }
+          setLabCampaign("hub");
+        }}
+      />
+    );
+  }
+
+  if (labCampaign === "twin") {
+    return (
+      <TwinMode
+        avatarPixels={avatarPixels}
+        onClose={() => {
+          try {
+            const storedTwin = JSON.parse(window.localStorage.getItem(TWIN_BEST_KEY) ?? "null");
+            if (Array.isArray(storedTwin)) {
+              const restoredTwin = Array<number | null>(TWIN_STAGES.length).fill(null);
+              storedTwin.slice(0, TWIN_STAGES.length).forEach((value, index) => {
+                restoredTwin[index] = typeof value === "number" ? value : null;
+              });
+              setTwinBests(restoredTwin);
             }
           } catch {
             // 손상된 실험 기록은 카드의 기본값으로 대체합니다.
@@ -303,7 +347,7 @@ export function WormholeMode({
         </header>
         <div className="lab-hub-content">
           <div className="lab-hub-heading">
-            <span className="beta-chip">2 EXPERIMENTS · 60 MAPS</span>
+            <span className="beta-chip">3 EXPERIMENTS · 90 MAPS</span>
             <h2>사각형 밖의 직진 규칙</h2>
             <p>모양과 이동 축이 완전히 다른 실험 스테이지입니다. 구역을 고른 뒤 기존 맵 선택과 같은 방식으로 번호를 선택하세요.</p>
           </div>
@@ -340,6 +384,24 @@ export function WormholeMode({
                 <em>여섯 갈래 직진과 빛나는 벌집형 경로</em>
               </span>
               <span className="lab-card-score">★ {totalHexStars}/90</span>
+            </button>
+            <button
+              className="lab-campaign-card twin-campaign-card"
+              type="button"
+              onClick={() => setLabCampaign("twin")}
+            >
+              <span className="lab-planet-image twin-lab-image" aria-hidden="true">
+                <i className="twin-lab-orbit" />
+                <i className="twin-lab-alpha" />
+                <i className="twin-lab-beta" />
+                <b />
+              </span>
+              <span className="lab-card-copy">
+                <small>SHARED INPUT · 30 MAPS</small>
+                <strong>쌍성계 제미니아</strong>
+                <em>하나의 방향으로 서로 다른 두 행성을 동기화</em>
+              </span>
+              <span className="lab-card-score">★ {totalTwinStars}/90</span>
             </button>
           </div>
         </div>
