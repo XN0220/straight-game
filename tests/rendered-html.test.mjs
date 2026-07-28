@@ -79,6 +79,24 @@ test("renders the Earth training and three-planet campaign shell", async () => {
   assert.doesNotMatch(html, /기록 공유/);
 });
 
+test("keeps planet map colors aligned and provides twelve ready-made avatars", async () => {
+  const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const engineSource = await readFile(new URL("../app/game-engine.ts", import.meta.url), "utf8");
+  const globalCssSource = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.equal((pageSource.match(/\bid:\s*"(?:mint|berry|chick|space|luna|cat|slime|penguin|rocket|cactus|snow|fox)"/g) ?? []).length, 12);
+  assert.match(pageSource, /네온 고양이/);
+  assert.match(pageSource, /별빛 여우/);
+  assert.match(engineSource, /화산 행성 아르코/);
+  assert.doesNotMatch(engineSource, /벽돌 행성 아르코|붉은 벽돌 행성/);
+  assert.match(pageSource, /<strong>\{planet\.name\}<\/strong>/);
+  assert.match(globalCssSource, /\.planet-2\s*\{[^}]*--mint:\s*#ff5d78/s);
+  assert.match(globalCssSource, /\.planet-key-2\s*\{\s*--key-accent:\s*#ff5d78/);
+  assert.match(globalCssSource, /\.planet-4\s*\{[^}]*--mint:\s*#a987ff/s);
+  assert.match(globalCssSource, /\.planet-key-4\s*\{\s*--key-accent:\s*#a987ff/);
+  assert.match(globalCssSource, /@media \(max-width: 720px\)[\s\S]*?\.planet-keypad-tabs\s*\{[^}]*grid-template-columns:\s*repeat\(2,/);
+});
+
 test("renders undo, continue, midpoint hint, and wormhole beta entry points", async () => {
   const html = await renderHome();
   assert.match(html, /맵 선택/);

@@ -176,6 +176,158 @@ const AVATAR_PRESETS = [
       { P: "#9b7bff", B: "#384a9f", C: "#d9e7ff", K: "#0d1534" },
     ),
   },
+  {
+    id: "luna",
+    name: "루나 토끼",
+    pixels: patternToPixels(
+      [
+        "..P....P..",
+        ".PPP..PPP.",
+        ".WWWWWWWW.",
+        "WWWWWWWWWW",
+        "WWKKWWKKWW",
+        "WWWWPPWWWW",
+        "WWPPPPPPWW",
+        ".WWWWWWWW.",
+        "..WWWWWW..",
+        "..W....W..",
+      ],
+      { P: "#9b7bff", W: "#f8fffd", K: "#231b35" },
+    ),
+  },
+  {
+    id: "cat",
+    name: "네온 고양이",
+    pixels: patternToPixels(
+      [
+        "BB......BB",
+        "BBB....BBB",
+        "BBBBBBBBBB",
+        "BBYYBBYYBB",
+        "BBKKBBKKBB",
+        "BBBBBBBBBB",
+        "BBBBPPBBBB",
+        "BBBPPPPBBB",
+        ".BBBBBBBB.",
+        "..B....B..",
+      ],
+      { B: "#273044", Y: "#ffd166", K: "#050508", P: "#ff5d78" },
+    ),
+  },
+  {
+    id: "slime",
+    name: "초록 슬라임",
+    pixels: patternToPixels(
+      [
+        "..........",
+        "...GGGG...",
+        ".GGGGGGGG.",
+        "GGGGGGGGGG",
+        "GGWWGGWWGG",
+        "GGKKGGKKGG",
+        "GGGGGGGGGG",
+        "GGBGGGGBGG",
+        ".GGGGGGGG.",
+        "..G.GG.G..",
+      ],
+      { G: "#63d16f", W: "#f8fffd", K: "#132816", B: "#2c8c58" },
+    ),
+  },
+  {
+    id: "penguin",
+    name: "빙하 펭귄",
+    pixels: patternToPixels(
+      [
+        "..BBBBBB..",
+        ".BBBBBBBB.",
+        "BBBBBBBBBB",
+        "BBWWBBWWBB",
+        "BBKKBBKKBB",
+        "BBWWWWWWBB",
+        "BBBBOOBBBB",
+        ".BBWWWWBB.",
+        "..BBBBBB..",
+        "..O....O..",
+      ],
+      { B: "#263755", W: "#f8fffd", K: "#080b12", O: "#ffd166" },
+    ),
+  },
+  {
+    id: "rocket",
+    name: "로켓 봇",
+    pixels: patternToPixels(
+      [
+        "...RRRR...",
+        "..RWWWWR..",
+        ".RBBBBBBR.",
+        "RRCCRRCCRR",
+        "RRKKRRKKRR",
+        "RRBBBBBBRR",
+        ".RROOORR..",
+        "..ORRRO...",
+        "...OOO....",
+        "...O.O....",
+      ],
+      { R: "#ff5d78", W: "#f8fffd", B: "#384a9f", C: "#d9e7ff", K: "#11151b", O: "#ffd166" },
+    ),
+  },
+  {
+    id: "cactus",
+    name: "우주 선인장",
+    pixels: patternToPixels(
+      [
+        "...GGGG...",
+        "..GGGGGG..",
+        ".GGYGGYGG.",
+        "GGGKGGKGGG",
+        "GGGGGGGGGG",
+        "..GGGGGG..",
+        "G.GGGGGG.G",
+        "GGGGGGGGGG",
+        "...GGGG...",
+        "...B..B...",
+      ],
+      { G: "#35b779", Y: "#ffd166", K: "#123e2c", B: "#9b5132" },
+    ),
+  },
+  {
+    id: "snow",
+    name: "설원 탐사대",
+    pixels: patternToPixels(
+      [
+        "...CCCC...",
+        "..CCCCCC..",
+        ".CCKCCKCC.",
+        ".CCCCCCCC.",
+        "..CCOOCC..",
+        "...CCCC...",
+        "..CCCCCC..",
+        ".CCCCCCCC.",
+        "..CCCCCC..",
+        "..B....B..",
+      ],
+      { C: "#d9f3ff", K: "#182b3b", O: "#ff8b59", B: "#4f7cff" },
+    ),
+  },
+  {
+    id: "fox",
+    name: "별빛 여우",
+    pixels: patternToPixels(
+      [
+        "OOO....OOO",
+        "OOOO..OOOO",
+        "OOOOOOOOOO",
+        "OOWWOOWWOO",
+        "OOKKOOKKOO",
+        "OOOOWWOOOO",
+        "OOOWWWWOOO",
+        ".OOOOOOOO.",
+        "..OOOOOO..",
+        "..OO..OO..",
+      ],
+      { O: "#f28b3c", W: "#fff4df", K: "#29160d" },
+    ),
+  },
 ] as const;
 
 const PAINT_COLORS: Array<{ name: string; value: Pixel }> = [
@@ -817,21 +969,38 @@ export default function Home() {
         context.lineWidth = 1;
         context.strokeRect(x + 5, y + 5, size - 10, size - 10);
       } else if (planet === 1) {
-        context.fillStyle = "#9f233b";
+        context.fillStyle = "#35141c";
         context.fillRect(x, y, size, size);
-        context.fillStyle = "#d83d58";
+        context.fillStyle = "#672131";
         context.fillRect(x + 2, y + 2, size - 4, size - 4);
-        context.fillStyle = "#ffbdc8";
-        context.fillRect(x + 1, y + 1, size - 2, 2);
-        context.fillRect(x + 1, y + size - 3, size - 2, 2);
-        for (let row = 9; row < size; row += 9) {
-          context.fillRect(x + 1, y + row, size - 2, 2);
-        }
-        context.fillStyle = "#ff91a5";
-        for (let row = 0; row < 4; row += 1) {
-          const offset = row % 2 === 0 ? 9 : 18;
-          context.fillRect(x + offset, y + row * 9 + 2, 2, 7);
-        }
+        context.fillStyle = "#9f3040";
+        context.beginPath();
+        context.moveTo(x + 4, y + 4);
+        context.lineTo(x + size - 7, y + 6);
+        context.lineTo(x + size - 4, y + 17);
+        context.lineTo(x + size - 10, y + size - 5);
+        context.lineTo(x + 8, y + size - 3);
+        context.lineTo(x + 3, y + 22);
+        context.closePath();
+        context.fill();
+        context.strokeStyle = "#ff5d78";
+        context.lineWidth = 2;
+        context.shadowColor = "#ff5d78";
+        context.shadowBlur = 5;
+        context.beginPath();
+        context.moveTo(x + 6, y + 8);
+        context.lineTo(x + 15, y + 14);
+        context.lineTo(x + 12, y + 23);
+        context.lineTo(x + 23, y + 31);
+        context.moveTo(x + 15, y + 14);
+        context.lineTo(x + 28, y + 8);
+        context.moveTo(x + 12, y + 23);
+        context.lineTo(x + 5, y + 30);
+        context.stroke();
+        context.shadowBlur = 0;
+        context.fillStyle = "#ff9b61";
+        context.fillRect(x + 13, y + 14, 3, 3);
+        context.fillRect(x + 21, y + 29, 3, 3);
       } else if (planet === 2) {
         context.fillStyle = "#2b343b";
         context.fillRect(x, y, size, size);
@@ -1648,7 +1817,7 @@ export default function Home() {
                         >
                           <span className="planet-image" aria-hidden="true" />
                           <small>{planet.location === "훈련 시설" ? "쉬움" : "보통"}</small>
-                          <strong>{planet.shortName}</strong>
+                          <strong>{planet.name}</strong>
                           <em>★ {planetStars}/90</em>
                         </button>
                       );
@@ -1825,7 +1994,7 @@ export default function Home() {
               <article>
                 <span>02</span>
                 <div>
-                  <h3>벽돌로 멈추세요</h3>
+                  <h3>행성 블록으로 멈추세요</h3>
                   <p>캐릭터는 블록의 95% 크기로 격자 중심에 정렬되어 한 칸 통로를 정확히 통과합니다.</p>
                 </div>
               </article>

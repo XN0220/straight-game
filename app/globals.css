@@ -13,15 +13,15 @@
 }
 
 .planet-1 {
-  --mint: #2f83c8;
+  --mint: #2377d5;
   --mint-deep: #155077;
   --planet-accent: #19a78f;
 }
 
 .planet-2 {
-  --mint: #74efc2;
-  --mint-deep: #1da47f;
-  --planet-accent: #ff5d78;
+  --mint: #ff5d78;
+  --mint-deep: #9f233b;
+  --planet-accent: #ff9b61;
 }
 
 .planet-3 {
@@ -41,6 +41,14 @@
     linear-gradient(rgba(32, 111, 145, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(32, 111, 145, 0.035) 1px, transparent 1px),
     radial-gradient(circle at 50% 15%, #24373c 0%, #0d1619 40%, #070a0c 75%);
+  background-size: 42px 42px, 42px 42px, auto;
+}
+
+.planet-2.site-shell {
+  background:
+    linear-gradient(rgba(255, 93, 120, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 93, 120, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, #3c1a21 0%, #170c10 42%, #08070a 76%);
   background-size: 42px 42px, 42px 42px, auto;
 }
 
@@ -529,7 +537,7 @@ button:focus-visible {
 
 .planet-keypad-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 9px;
 }
 
@@ -549,10 +557,10 @@ button:focus-visible {
   cursor: pointer;
 }
 
-.planet-key-1 { --key-accent: #4da4ff; }
+.planet-key-1 { --key-accent: #2377d5; }
 .planet-key-2 { --key-accent: #ff5d78; }
 .planet-key-3 { --key-accent: #ffd166; }
-.planet-key-4 { --key-accent: #55f2df; }
+.planet-key-4 { --key-accent: #a987ff; }
 .wormhole-planet-key { --key-accent: #a987ff; }
 
 .planet-key:hover,
@@ -575,6 +583,17 @@ button:focus-visible {
   box-shadow: 0 0 20px color-mix(in srgb, var(--key-accent) 40%, transparent);
 }
 
+.planet-key-2 .planet-image {
+  background:
+    linear-gradient(135deg, rgba(255, 224, 210, 0.72), transparent 26%),
+    linear-gradient(38deg, transparent 0 43%, #ff5d78 44% 48%, transparent 49%),
+    linear-gradient(118deg, transparent 0 57%, #ff9b61 58% 61%, transparent 62%),
+    radial-gradient(circle at 64% 66%, #9f3040, #3b1018 72%);
+  box-shadow:
+    inset -8px -7px 12px rgba(23, 3, 8, 0.62),
+    0 0 22px rgba(255, 93, 120, 0.5);
+}
+
 .wormhole-planet-key .planet-image {
   border: 7px double #a987ff;
   background: radial-gradient(circle, #020105 20%, #5b24a5 36%, #ff70cc 55%, #18082c 72%);
@@ -588,10 +607,9 @@ button:focus-visible {
 }
 
 .planet-key strong {
-  overflow: hidden;
   font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .planet-key em {
@@ -1601,6 +1619,10 @@ button:focus-visible {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+  max-height: 324px;
+  padding-right: 4px;
+  overflow-y: auto;
+  scrollbar-color: var(--mint) rgba(255,255,255,0.06);
 }
 
 .preset-list button {
@@ -3631,19 +3653,25 @@ button:focus-visible {
   }
 
   .planet-keypad-tabs {
-    grid-template-columns: repeat(5, minmax(88px, 1fr));
-    padding-bottom: 6px;
-    overflow-x: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-bottom: 0;
+    overflow: visible;
   }
 
   .planet-key {
-    min-height: 72px;
+    min-height: 76px;
     grid-template-columns: 38px minmax(0, 1fr);
+    padding: 8px;
   }
 
   .planet-image {
     width: 34px;
     height: 34px;
+  }
+
+  .planet-key strong {
+    font-size: 10px;
+    white-space: normal;
   }
 
   .stage-keypad {

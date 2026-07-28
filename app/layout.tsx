@@ -91,7 +91,7 @@ export const metadata: Metadata = {
         url: "https://xn0220.github.io/straight-game/social-preview.jpg",
         width: 1731,
         height: 909,
-        alt: "벽돌 우주 맵과 직진하는 민트색 캐릭터가 그려진 직진 게임",
+        alt: "우주 퍼즐 맵과 직진하는 픽셀 캐릭터가 그려진 직진 게임",
       },
     ],
   },

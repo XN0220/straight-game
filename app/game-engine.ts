@@ -137,9 +137,9 @@ export const PLANETS: Planet[] = [
   {
     id: 2,
     code: "ARCO",
-    name: "벽돌 행성 아르코",
+    name: "화산 행성 아르코",
     shortName: "아르코",
-    description: "기존 30개 맵이 그대로 이어지는 붉은 벽돌 행성",
+    description: "검붉은 화산암과 빛나는 용암 균열로 뒤덮인 뜨거운 행성",
     mechanic: "기본 기믹 종합",
     difficulty: "보통",
     location: "탐사 행성",
@@ -187,7 +187,7 @@ function chapter(
 }
 
 const SPACE_CHAPTERS: Chapter[] = [
-  chapter(1, 0, 0, "BASIC", "기본 궤도", "PAR 8–12", "정지 블록에서 멈추는 감각과 위험한 경계를 익히는 구역", ["벽돌", "위험 경계"], "#74efc2"),
+  chapter(1, 0, 0, "BASIC", "기본 궤도", "PAR 8–12", "화산암에서 멈추는 감각과 위험한 경계를 익히는 구역", ["화산암", "위험 경계"], "#ff5d78"),
   chapter(2, 0, 1, "DETOUR", "우회 구역", "PAR 12–16", "넓은 공간의 정지점을 골라 긴 우회 궤도를 만드는 구역", ["미끼 정지점", "다중 선택"], "#ffd166"),
   chapter(3, 0, 2, "ONE-WAY", "화살표 구역", "PAR 16–20", "표시된 방향으로만 통과할 수 있는 일방통행 구역", ["일방통행", "역방향 차단"], "#5bd3ff"),
   chapter(4, 0, 3, "WARP", "워프 회로", "PAR 20–24", "보라색 워프 쌍과 일방통행을 함께 계산하는 구역", ["워프", "일방통행"], "#9b7bff"),
