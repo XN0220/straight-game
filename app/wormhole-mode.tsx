@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { starsFor } from "./game-engine";
 import { HEX_STAGES } from "./hex-engine";
 import { HEX_BEST_KEY, HexMode } from "./hex-mode";
+import { SpeedControl, type MoveSpeed } from "./speed-control";
 import {
   INITIAL_RADIAL_STATE,
   RADIAL_SECTORS,
@@ -103,6 +104,7 @@ export function WormholeMode({
   const [moves, setMoves] = useState(0);
   const [deaths, setDeaths] = useState(0);
   const [moving, setMoving] = useState(false);
+  const [moveSpeed, setMoveSpeed] = useState<MoveSpeed>(1);
   const [trace, setTrace] = useState<RadialCell[]>([]);
   const [history, setHistory] = useState<
     Array<{ cell: RadialCell; moves: number; runState: RadialState }>
@@ -214,9 +216,9 @@ export function WormholeMode({
         }
         setCell({ ...plan.destination });
         setRunState({ ...plan.state });
-      }, 330);
+      }, 330 / moveSpeed);
     },
-    [cell, moves, moving, runState, screen, stage, stageIndex],
+    [cell, moveSpeed, moves, moving, runState, screen, stage, stageIndex],
   );
 
   useEffect(() => {
@@ -347,7 +349,7 @@ export function WormholeMode({
 
   return (
     <div
-      className={`wormhole-mode ${screen === "select" ? "is-selecting" : "is-playing"}`}
+      className={`wormhole-mode speed-${String(moveSpeed).replace(".", "-")} ${screen === "select" ? "is-selecting" : "is-playing"}`}
       role="dialog"
       aria-modal="true"
       aria-label="웜홀 베타 스테이지"
@@ -432,6 +434,7 @@ export function WormholeMode({
                 ↶ 한 수 되돌리기
               </button>
               <button type="button" onClick={() => start(stageIndex)}>↻ 다시 시작</button>
+              <SpeedControl speed={moveSpeed} onChange={setMoveSpeed} />
             </div>
             <p className="wormhole-rule">
               ↑ 바깥 · ↓ 중심 · → 시계 · ← 반시계
