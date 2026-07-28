@@ -1574,7 +1574,7 @@ export default function Home() {
                     <span className="mini-wormhole" aria-hidden="true" />
                     <span>
                       <small>TEST LAB · BETA</small>
-                      <strong>웜홀: 휘어진 맵 실험 구역</strong>
+                      <strong>웜홀: 원형·육각형 실험 구역</strong>
                     </span>
                     <em>진입 →</em>
                   </button>
@@ -1850,8 +1850,8 @@ export default function Home() {
               <article>
                 <span>07</span>
                 <div>
-                  <h3>공식 120맵과 웜홀 베타 30맵</h3>
-                  <p>공식 맵은 최단 경로와 필수 기믹을 자동 검증합니다. 웜홀은 작은 입문 맵에서 시작해 포탈과 온오프 블록을 함께 쓰는 고난도 원형 맵까지 이어집니다.</p>
+                  <h3>공식 120맵과 웜홀 실험 60맵</h3>
+                  <p>공식 맵은 최단 경로와 필수 기믹을 자동 검증합니다. 웜홀에서는 휘어진 원형 맵 30개와 여섯 방향으로 움직이는 육각형 맵 30개를 별도로 플레이할 수 있습니다.</p>
                 </div>
               </article>
             </div>
