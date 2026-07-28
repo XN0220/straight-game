@@ -2829,6 +2829,39 @@ button:focus-visible {
   box-shadow: inset 0 -2px 0 rgba(255,209,102,0.45);
 }
 
+.twin-gimmick-state {
+  margin: -5px 0 10px;
+}
+
+.twin-gimmick-state span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 8px;
+  border: 1px solid rgba(229,187,255,0.22);
+  color: #8e8797;
+  font: 800 7px/1.25 "Courier New", monospace;
+}
+
+.twin-gimmick-state i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 2px;
+  background: #554360;
+}
+
+.twin-gimmick-state span.is-active {
+  color: #ffd166;
+  border-color: rgba(255,209,102,0.42);
+  background: rgba(255,209,102,0.06);
+}
+
+.twin-gimmick-state span.is-active i {
+  background: #ffd166;
+  box-shadow: 0 0 9px rgba(255,209,102,0.9);
+}
+
 .twin-board-area {
   min-width: 0;
   display: grid;
@@ -2930,6 +2963,52 @@ button:focus-visible {
   stroke: #ff79c8;
   stroke-width: 2;
   filter: drop-shadow(0 0 4px rgba(255,121,200,0.5));
+}
+
+.twin-tile.is-switch {
+  fill: rgba(229,187,255,0.08);
+}
+
+.twin-tile.is-gate {
+  fill: rgba(255,209,102,0.05);
+}
+
+.twin-switch rect {
+  fill: rgba(229,187,255,0.2);
+  stroke: #e5bbff;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 6px rgba(229,187,255,0.7));
+}
+
+.twin-switch circle {
+  fill: #f7eeff;
+}
+
+.twin-switch.is-active {
+  opacity: 0.45;
+}
+
+.twin-gate rect {
+  fill: rgba(255,209,102,0.16);
+  stroke: #ffd166;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 6px rgba(255,209,102,0.68));
+}
+
+.twin-gate path {
+  fill: none;
+  stroke: #fff0aa;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.twin-gate.is-open {
+  opacity: 0.28;
+}
+
+.twin-gate.is-open rect {
+  fill: rgba(255,209,102,0.04);
+  stroke-dasharray: 5 5;
 }
 
 .twin-goal rect {
@@ -3672,27 +3751,102 @@ button:focus-visible {
   .twin-play {
     display: grid;
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto minmax(0, 1fr);
     align-items: start;
+    min-height: calc(100dvh - 68px);
+    height: calc(100dvh - 68px);
+    gap: 5px;
+    padding: 5px 7px 7px;
+    overflow: hidden;
+  }
+
+  .twin-side {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 4px 8px;
+  }
+
+  .twin-side > p:not(.wormhole-rule),
+  .twin-key-rule {
+    display: none;
+  }
+
+  .twin-side .wormhole-score {
+    justify-content: flex-end;
+    margin: 0;
+  }
+
+  .twin-side .wormhole-score span {
+    gap: 2px;
+    padding: 5px 7px;
+  }
+
+  .twin-side .wormhole-score strong {
+    font-size: 13px;
+  }
+
+  .twin-status {
+    margin: 0;
+  }
+
+  .twin-status span {
+    padding: 5px 7px;
+  }
+
+  .twin-gimmick-state {
+    min-width: 0;
+    margin: 0;
+  }
+
+  .twin-gimmick-state span {
+    min-height: 28px;
+    padding: 5px 7px;
+  }
+
+  .twin-side .wormhole-tools {
+    grid-column: 1 / -1;
+  }
+
+  .twin-side .wormhole-tools button {
+    min-height: 31px;
+    padding-block: 5px;
   }
 
   .twin-board-area {
     width: 100%;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr) auto;
+    align-content: start;
+    gap: 5px;
   }
 
   .twin-worlds {
-    width: min(100%, 520px);
+    width: 100%;
     margin-inline: auto;
-    grid-template-columns: 1fr;
-    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 5px;
   }
 
   .twin-world svg {
-    max-height: 315px;
+    width: 100%;
+    height: auto;
+    max-height: min(33dvh, 255px);
   }
 
   .twin-dpad {
-    margin-top: 10px;
+    width: 132px;
+    grid-template-columns: repeat(3, 42px);
+    grid-template-rows: repeat(3, 42px);
+    gap: 3px;
+    margin: 0 auto;
+  }
+
+  .twin-dpad button {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
   }
 }
 
@@ -3849,23 +4003,37 @@ button:focus-visible {
   }
 
   .twin-world > header {
-    min-height: 32px;
+    min-height: 27px;
+    grid-template-columns: auto 1fr;
+    gap: 4px;
+    padding-inline: 6px;
+  }
+
+  .twin-world > header strong {
+    overflow: hidden;
+    font-size: 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .twin-world > header em {
+    display: none;
   }
 
   .twin-world svg {
-    max-height: 265px;
+    max-height: min(32dvh, 225px);
   }
 
   .twin-dpad {
-    width: 148px;
-    grid-template-columns: repeat(3, 46px);
-    grid-template-rows: repeat(3, 46px);
+    width: 132px;
+    grid-template-columns: repeat(3, 42px);
+    grid-template-rows: repeat(3, 42px);
   }
 
   .twin-dpad button {
-    width: 46px;
-    height: 46px;
-    font-size: 21px;
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
   }
 }
 

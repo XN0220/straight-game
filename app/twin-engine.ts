@@ -10,6 +10,8 @@ export type TwinBoard = {
   blockCells: TwinCell[];
   start: TwinCell;
   goal: TwinCell;
+  switchCell: TwinCell | null;
+  gateCell: TwinCell | null;
 };
 
 export type TwinStage = {
@@ -19,6 +21,7 @@ export type TwinStage = {
   par: number;
   solution: TwinDirection[];
   parOffset: number;
+  gimmick: "resonance-gate" | null;
 };
 
 export type TwinRunState = {
@@ -26,12 +29,15 @@ export type TwinRunState = {
   right: TwinCell;
   leftDone: boolean;
   rightDone: boolean;
+  gateOpen: boolean;
+  gateCrossed: boolean;
 };
 
 export type TwinBoardMove = {
-  outcome: "blocked" | "stop" | "goal" | "fixed";
+  outcome: "blocked" | "stop" | "goal" | "fixed" | "switch";
   destination: TwinCell;
   path: TwinCell[];
+  crossedGate: boolean;
 };
 
 export type TwinStep = {
@@ -48,6 +54,7 @@ type StageSpec = {
   targetPar: number;
   density: number;
   parOffset: number;
+  gimmick: boolean;
 };
 
 const DIRECTIONS: TwinDirection[] = ["up", "down", "left", "right"];
@@ -72,6 +79,8 @@ function stateKey(state: TwinRunState) {
     twinCellKey(state.right),
     state.leftDone ? 1 : 0,
     state.rightDone ? 1 : 0,
+    state.gateOpen ? 1 : 0,
+    state.gateCrossed ? 1 : 0,
   ].join("|");
 }
 
@@ -89,32 +98,56 @@ export function twinBoardSlide(
   from: TwinCell,
   direction: TwinDirection,
   fixed = false,
+  gateOpen = false,
 ): TwinBoardMove {
   if (fixed) {
-    return { outcome: "fixed", destination: { ...from }, path: [] };
+    return {
+      outcome: "fixed",
+      destination: { ...from },
+      path: [],
+      crossedGate: false,
+    };
   }
 
   const vector = VECTOR[direction];
   const path: TwinCell[] = [];
   let current = { ...from };
+  let crossedGate = false;
 
   while (true) {
     const next = {
       col: current.col + vector.col,
       row: current.row + vector.row,
     };
-    if (!inside(board, next) || board.blocks.has(twinCellKey(next))) {
+    const nextKey = twinCellKey(next);
+    const closedGate =
+      board.gateCell !== null &&
+      sameCell(next, board.gateCell) &&
+      !gateOpen;
+    if (!inside(board, next) || board.blocks.has(nextKey) || closedGate) {
       return {
         outcome: path.length === 0 ? "blocked" : "stop",
         destination: current,
         path,
+        crossedGate,
       };
     }
 
     current = next;
     path.push({ ...current });
+    if (board.gateCell !== null && sameCell(current, board.gateCell)) {
+      crossedGate = true;
+    }
     if (sameCell(current, board.goal)) {
-      return { outcome: "goal", destination: current, path };
+      return { outcome: "goal", destination: current, path, crossedGate };
+    }
+    if (board.switchCell !== null && sameCell(current, board.switchCell)) {
+      return {
+        outcome: "switch",
+        destination: current,
+        path,
+        crossedGate,
+      };
     }
   }
 }
@@ -124,15 +157,35 @@ export function twinStep(
   state: TwinRunState,
   direction: TwinDirection,
 ): TwinStep {
-  const left = twinBoardSlide(stage.left, state.left, direction, state.leftDone);
-  const right = twinBoardSlide(stage.right, state.right, direction, state.rightDone);
+  const left = twinBoardSlide(
+    stage.left,
+    state.left,
+    direction,
+    state.leftDone,
+    state.gateOpen,
+  );
+  const right = twinBoardSlide(
+    stage.right,
+    state.right,
+    direction,
+    state.rightDone,
+    state.gateOpen,
+  );
   const leftDone = state.leftDone || left.outcome === "goal";
   const rightDone = state.rightDone || right.outcome === "goal";
+  const gateOpen =
+    state.gateOpen ||
+    left.outcome === "switch" ||
+    right.outcome === "switch";
+  const gateCrossed =
+    state.gateCrossed || left.crossedGate || right.crossedGate;
   const nextState = {
     left: { ...left.destination },
     right: { ...right.destination },
     leftDone,
     rightDone,
+    gateOpen,
+    gateCrossed,
   };
 
   return {
@@ -149,10 +202,20 @@ export function initialTwinState(stage: TwinStage): TwinRunState {
     right: { ...stage.right.start },
     leftDone: sameCell(stage.left.start, stage.left.goal),
     rightDone: sameCell(stage.right.start, stage.right.goal),
+    gateOpen: false,
+    gateCrossed: false,
   };
 }
 
-function solve(stage: TwinStage, depthLimit = 28) {
+export function twinStageComplete(stage: TwinStage, state: TwinRunState) {
+  return (
+    state.leftDone &&
+    state.rightDone &&
+    (stage.gimmick === null || state.gateCrossed)
+  );
+}
+
+function solve(stage: TwinStage, depthLimit = 32) {
   const initial = initialTwinState(stage);
   const queue: Array<{ state: TwinRunState; path: TwinDirection[] }> = [
     { state: initial, path: [] },
@@ -167,7 +230,7 @@ function solve(stage: TwinStage, depthLimit = 28) {
       const step = twinStep(stage, current.state, direction);
       if (!step.changed) continue;
       const path = [...current.path, direction];
-      if (step.state.leftDone && step.state.rightDone) return path;
+      if (twinStageComplete(stage, step.state)) return path;
       const key = stateKey(step.state);
       if (visited.has(key)) continue;
       visited.add(key);
@@ -233,7 +296,38 @@ function makeBoard(
     blockCells,
     start,
     goal,
+    switchCell: null,
+    gateCell: null,
   };
+}
+
+function randomBoardFeatureCell(
+  random: () => number,
+  board: TwinBoard,
+) {
+  const candidates: TwinCell[] = [];
+  for (let row = 0; row < board.rows; row += 1) {
+    for (let col = 0; col < board.cols; col += 1) {
+      const cell = { col, row };
+      const key = twinCellKey(cell);
+      if (
+        !board.blocks.has(key) &&
+        !sameCell(cell, board.start) &&
+        !sameCell(cell, board.goal)
+      ) {
+        candidates.push(cell);
+      }
+    }
+  }
+  return candidates[Math.floor(random() * candidates.length)];
+}
+
+function addResonanceGate(stage: TwinStage, random: () => number) {
+  const switchOnLeft = random() < 0.5;
+  const switchBoard = switchOnLeft ? stage.left : stage.right;
+  const gateBoard = switchOnLeft ? stage.right : stage.left;
+  switchBoard.switchCell = randomBoardFeatureCell(random, switchBoard);
+  gateBoard.gateCell = randomBoardFeatureCell(random, gateBoard);
 }
 
 function stageSpec(id: number): StageSpec {
@@ -245,21 +339,57 @@ function stageSpec(id: number): StageSpec {
       targetPar: 1 + ((id - 1) % 3),
       density: 0.14 + id * 0.018,
       parOffset: 0,
+      gimmick: false,
     };
   }
 
   const parOffset = 2 + ((id - 6) % 3);
-  const targetPar = HEX_STAGES[id - 1].par + parOffset;
   if (id <= 10) {
-    return { id, cols: 5, rows: 5, targetPar, density: 0.2, parOffset };
+    const targetPar = HEX_STAGES[id - 1].par + parOffset;
+    return {
+      id,
+      cols: 5,
+      rows: 5,
+      targetPar,
+      density: 0.2,
+      parOffset,
+      gimmick: false,
+    };
   }
   if (id <= 15) {
-    return { id, cols: 6, rows: 6, targetPar, density: 0.23, parOffset };
+    const targetPar = HEX_STAGES[id - 1].par + parOffset;
+    return {
+      id,
+      cols: 6,
+      rows: 6,
+      targetPar,
+      density: 0.23,
+      parOffset,
+      gimmick: false,
+    };
   }
   if (id <= 20) {
-    return { id, cols: 7, rows: 7, targetPar, density: 0.26, parOffset };
+    const targetPar = HEX_STAGES[id - 1].par + parOffset;
+    return {
+      id,
+      cols: 7,
+      rows: 7,
+      targetPar,
+      density: 0.26,
+      parOffset,
+      gimmick: false,
+    };
   }
-  return { id, cols: 8, rows: 7, targetPar, density: 0.28, parOffset };
+  const lateTargets = [15, 16, 17, 18, 19, 20, 21, 22, 23, 25];
+  return {
+    id,
+    cols: 9,
+    rows: 8,
+    targetPar: lateTargets[id - 21],
+    density: 0.29,
+    parOffset: 0,
+    gimmick: true,
+  };
 }
 
 function generateStage(spec: StageSpec): TwinStage {
@@ -283,7 +413,9 @@ function generateStage(spec: StageSpec): TwinStage {
       par: 0,
       solution: [],
       parOffset: spec.parOffset,
+      gimmick: spec.gimmick ? "resonance-gate" : null,
     };
+    if (spec.gimmick) addResonanceGate(stage, random);
     const solution = solve(stage, spec.targetPar);
     if (!solution || solution.length !== spec.targetPar) continue;
     stage.par = solution.length;
@@ -305,10 +437,34 @@ TWIN_STAGES.forEach((stage) => {
   if (stage.id <= 5 && (stage.par < 1 || stage.par > 3)) {
     throw new Error(`제미니아 ${stage.id}번 맵이 1~3회 난이도를 벗어났습니다.`);
   }
-  if (stage.id >= 6) {
+  if (stage.id >= 6 && stage.id <= 20) {
     const offset = stage.par - HEX_STAGES[stage.id - 1].par;
     if (offset < 2 || offset > 4) {
       throw new Error(`제미니아 ${stage.id}번 맵의 추가 이동 수가 2~4회를 벗어났습니다.`);
+    }
+  }
+  if (stage.id >= 21) {
+    const featureCount = [
+      stage.left.switchCell,
+      stage.right.switchCell,
+      stage.left.gateCell,
+      stage.right.gateCell,
+    ].filter(Boolean).length;
+    if (stage.par < 15 || stage.par > 25) {
+      throw new Error(`제미니아 ${stage.id}번 맵이 15~25회 난이도를 벗어났습니다.`);
+    }
+    if (
+      stage.gimmick !== "resonance-gate" ||
+      featureCount !== 2
+    ) {
+      throw new Error(`제미니아 ${stage.id}번 맵의 공명 게이트 검증에 실패했습니다.`);
+    }
+    let state = initialTwinState(stage);
+    solution.forEach((direction) => {
+      state = twinStep(stage, state, direction).state;
+    });
+    if (!state.gateOpen || !state.gateCrossed) {
+      throw new Error(`제미니아 ${stage.id}번 맵이 공명 기믹을 사용하지 않습니다.`);
     }
   }
 });

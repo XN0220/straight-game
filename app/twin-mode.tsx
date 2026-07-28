@@ -7,6 +7,7 @@ import {
   TWIN_STAGES,
   initialTwinState,
   twinCellKey,
+  twinStageComplete,
   twinStep,
   type TwinBoard,
   type TwinCell,
@@ -41,6 +42,8 @@ function cloneRunState(state: TwinRunState): TwinRunState {
     right: { ...state.right },
     leftDone: state.leftDone,
     rightDone: state.rightDone,
+    gateOpen: state.gateOpen,
+    gateCrossed: state.gateCrossed,
   };
 }
 
@@ -74,6 +77,7 @@ function TwinBoardView({
   moving,
   avatarPixels,
   side,
+  gateOpen,
 }: {
   label: string;
   board: TwinBoard;
@@ -84,6 +88,7 @@ function TwinBoardView({
   moving: boolean;
   avatarPixels: Array<string | null>;
   side: "left" | "right";
+  gateOpen: boolean;
 }) {
   const playerPoint = pointFor(board, cell);
   const cellSize = playerPoint.cellSize;
@@ -128,10 +133,23 @@ function TwinBoardView({
           const x = offsetX + tile.col * cellSize;
           const y = offsetY + tile.row * cellSize;
           const isBlock = board.blocks.has(key);
+          const isSwitch =
+            board.switchCell !== null &&
+            twinCellKey(board.switchCell) === key;
+          const isGate =
+            board.gateCell !== null &&
+            twinCellKey(board.gateCell) === key;
+          const tileClass = [
+            "twin-tile",
+            isBlock ? "is-block" : "",
+            isSwitch ? "is-switch" : "",
+            isGate ? "is-gate" : "",
+            isGate && gateOpen ? "is-open" : "",
+          ].filter(Boolean).join(" ");
           return (
             <rect
               key={key}
-              className={isBlock ? "twin-tile is-block" : "twin-tile"}
+              className={tileClass}
               x={x + 2}
               y={y + 2}
               width={cellSize - 4}
@@ -141,6 +159,42 @@ function TwinBoardView({
             />
           );
         })}
+        {board.switchCell !== null && (() => {
+          const point = pointFor(board, board.switchCell);
+          return (
+            <g
+              className={`twin-switch ${gateOpen ? "is-active" : ""}`}
+              transform={`translate(${point.x} ${point.y})`}
+            >
+              <rect
+                x={-cellSize * 0.31}
+                y={-cellSize * 0.31}
+                width={cellSize * 0.62}
+                height={cellSize * 0.62}
+                rx={cellSize * 0.13}
+              />
+              <circle r={cellSize * 0.12} />
+            </g>
+          );
+        })()}
+        {board.gateCell !== null && (() => {
+          const point = pointFor(board, board.gateCell);
+          return (
+            <g
+              className={`twin-gate ${gateOpen ? "is-open" : ""}`}
+              transform={`translate(${point.x} ${point.y})`}
+            >
+              <rect
+                x={-cellSize * 0.32}
+                y={-cellSize * 0.32}
+                width={cellSize * 0.64}
+                height={cellSize * 0.64}
+                rx={cellSize * 0.08}
+              />
+              <path d={`M ${-cellSize * 0.14} ${-cellSize * 0.22} V ${cellSize * 0.22} M 0 ${-cellSize * 0.22} V ${cellSize * 0.22} M ${cellSize * 0.14} ${-cellSize * 0.22} V ${cellSize * 0.22}`} />
+            </g>
+          );
+        })()}
         {(() => {
           const goal = pointFor(board, board.goal);
           return (
@@ -299,7 +353,7 @@ export function TwinMode({
         setMoving(false);
         setTrace({ left: [], right: [] });
         setMotion({ left: 0, right: 0 });
-        if (!step.state.leftDone || !step.state.rightDone) return;
+        if (!twinStageComplete(stage, step.state)) return;
 
         setBests((previous) => {
           const next = [...previous];
@@ -388,7 +442,7 @@ export function TwinMode({
             <span>06–10 5~9 MOVE</span>
             <span>11–15 7~14 MOVE</span>
             <span>16–20 12~19 MOVE</span>
-            <span>21–30 10~24 MOVE</span>
+            <span>21–30 15~25 MOVE · 공명 게이트</span>
           </div>
           <div className="wormhole-stage-grid twin-stage-grid" aria-label="제미니아 30단계 선택">
             {TWIN_STAGES.map((item, index) => {
@@ -418,7 +472,9 @@ export function TwinMode({
                 ? "큰 블록 · 공유 이동 입문"
                 : stage.id <= 15
                   ? "비대칭 행성 · 경로 분리"
-                  : "고난도 · 두 행성 동시 계산"}
+                  : stage.id <= 20
+                    ? "고난도 · 두 행성 동시 계산"
+                    : "공명 스위치 · 반대 행성 게이트 개방"}
             </p>
             <div className="wormhole-score">
               <span>MOVE <strong>{moves}</strong></span>
@@ -429,6 +485,14 @@ export function TwinMode({
               <span className={runState.leftDone ? "is-done" : ""}>α {runState.leftDone ? "고정" : "이동"}</span>
               <span className={runState.rightDone ? "is-done" : ""}>β {runState.rightDone ? "고정" : "이동"}</span>
             </div>
+            {stage.gimmick === "resonance-gate" && (
+              <div className="twin-gimmick-state" aria-label="공명 게이트 상태">
+                <span className={runState.gateOpen ? "is-active" : ""}>
+                  <i aria-hidden="true" />
+                  {runState.gateOpen ? "공명 게이트 열림" : "반대 행성의 스위치를 먼저 밟으세요"}
+                </span>
+              </div>
+            )}
             <div className="wormhole-tools">
               <button type="button" disabled={history.length === 0 || moving} onClick={undo}>
                 ↶ 한 수 되돌리기
@@ -453,6 +517,7 @@ export function TwinMode({
                 moving={moving}
                 avatarPixels={avatarPixels}
                 side="left"
+                gateOpen={runState.gateOpen}
               />
               <TwinBoardView
                 label="홍련 행성"
@@ -464,6 +529,7 @@ export function TwinMode({
                 moving={moving}
                 avatarPixels={avatarPixels}
                 side="right"
+                gateOpen={runState.gateOpen}
               />
             </div>
             <div className="radial-dpad twin-dpad" aria-label="제미니아 공유 방향 조작">

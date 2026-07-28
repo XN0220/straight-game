@@ -160,6 +160,13 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.doesNotMatch(twinSource, /portal|wormhole/i);
   assert.match(twinModeSource, /두 캐릭터가 모두 멈춘 뒤 다음 입력/);
   assert.match(twinSource, /state\.leftDone \|\| left\.outcome === "goal"/);
+  assert.match(twinSource, /stage\.par < 15 \|\| stage\.par > 25/);
+  assert.match(twinSource, /gimmick: "resonance-gate" \| null/);
+  assert.match(twinSource, /!state\.gateOpen \|\| !state\.gateCrossed/);
+  assert.match(twinModeSource, /공명 스위치 · 반대 행성 게이트 개방/);
+  assert.match(twinModeSource, /21–30 15~25 MOVE · 공명 게이트/);
   assert.match(twinModeSource, /initialTwinState/);
   assert.match(twinModeSource, /ARRIVE/);
+  assert.match(globalCssSource, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(globalCssSource, /\.twin-gimmick-state/);
 });
