@@ -63,20 +63,19 @@ test("renders share preview metadata", async () => {
   assert.match(html, /rel="canonical" href="https:\/\/xn0220\.github\.io\/straight-game\/"/);
 });
 
-test("renders the Earth training and three-planet campaign shell", async () => {
+test("renders the Earth training and seven-planet campaign shell", async () => {
   const html = await renderHome();
   assert.match(html, /직진 게임/);
   assert.doesNotMatch(html, /직선 게임|직진게임/);
-  assert.match(html, /EARTH TRAINING \+ 3 PLANETS/);
-  assert.match(html, /120 VERIFIED MAPS/);
-  assert.match(html, /지구 궤도 연구실/);
-  assert.match(html, /쉬움/);
-  assert.match(html, /보통/);
+  assert.match(html, /7개 행성 240개 맵/);
   assert.doesNotMatch(html, /잠긴 행성/);
-  assert.match(html, /아르코/);
-  assert.match(html, /기어라/);
-  assert.match(html, /프리즘/);
   assert.doesNotMatch(html, /기록 공유/);
+
+  const engineSource = await readFile(new URL("../app/game-engine.ts", import.meta.url), "utf8");
+  assert.match(engineSource, /지구 궤도 연구실/);
+  for (const planet of ["아르코", "에어론", "넥서스", "볼테라", "샤디아", "기어라", "프리즘"]) {
+    assert.match(engineSource, new RegExp(planet));
+  }
 });
 
 test("keeps planet map colors aligned and provides twelve ready-made avatars", async () => {
@@ -92,9 +91,49 @@ test("keeps planet map colors aligned and provides twelve ready-made avatars", a
   assert.match(pageSource, /<strong>\{planet\.name\}<\/strong>/);
   assert.match(globalCssSource, /\.planet-2\s*\{[^}]*--mint:\s*#ff5d78/s);
   assert.match(globalCssSource, /\.planet-key-2\s*\{\s*--key-accent:\s*#ff5d78/);
-  assert.match(globalCssSource, /\.planet-4\s*\{[^}]*--mint:\s*#a987ff/s);
-  assert.match(globalCssSource, /\.planet-key-4\s*\{\s*--key-accent:\s*#a987ff/);
+  assert.match(globalCssSource, /\.planet-8\s*\{[^}]*--mint:\s*#a987ff/s);
+  assert.match(globalCssSource, /\.planet-key-8\s*\{\s*--key-accent:\s*#a987ff/);
   assert.match(globalCssSource, /@media \(max-width: 720px\)[\s\S]*?\.planet-keypad-tabs\s*\{[^}]*grid-template-columns:\s*repeat\(2,/);
+});
+
+test("keeps all 210 normal maps inside the requested progression and verification rules", async () => {
+  const dataSource = await readFile(
+    new URL("../app/normal-campaign-data.ts", import.meta.url),
+    "utf8",
+  );
+  const json = dataSource
+    .replace(/^.*?=\s*/s, "")
+    .replace(/;\s*$/, "");
+  const stages = JSON.parse(json);
+  const primaryMechanics = [null, "oneWay", "portal", "switch", "fragile", "rotator", "phase"];
+
+  assert.equal(stages.length, 210);
+  for (let planet = 0; planet < 7; planet += 1) {
+    const planetStages = stages.slice(planet * 30, planet * 30 + 30);
+    assert.equal(planetStages.length, 30);
+    planetStages.forEach((stage, index) => {
+      assert.equal(stage.id, planet * 30 + index + 1);
+      assert.ok(stage.shortestPaths >= 1 && stage.shortestPaths <= 4);
+      assert.ok(stage.expectedMechanics.length <= 2);
+      assert.equal(
+        stage.mapSize,
+        index < 10 ? "small" : index < 20 ? "medium" : "full",
+      );
+      if (index < 10) assert.ok(stage.expectedMechanics.length <= 1);
+      if (planet === 0) assert.equal(stage.expectedMechanics.length, 0);
+      if (planet > 0) assert.ok(stage.expectedMechanics.includes(primaryMechanics[planet]));
+      if (index >= 25) assert.ok(stage.expectedPar >= 20);
+    });
+    assert.deepEqual(
+      planetStages.slice(25).map((stage) => stage.expectedPar),
+      [20, 22, 24, 26, 30],
+    );
+  }
+
+  const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(pageSource, /isBossStage\(level\.localId\) \? "is-boss"/);
+  assert.match(pageSource, /MAP 01 · NEW MECHANIC/);
+  assert.match(pageSource, /설명을 닫지 않아도 바로 이동/);
 });
 
 test("renders undo, continue, midpoint hint, and wormhole beta entry points", async () => {

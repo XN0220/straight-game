@@ -25,12 +25,36 @@
 }
 
 .planet-3 {
+  --mint: #5bd3ff;
+  --mint-deep: #197c9f;
+  --planet-accent: #74efc2;
+}
+
+.planet-4 {
+  --mint: #9b7bff;
+  --mint-deep: #5c3bb8;
+  --planet-accent: #5bd3ff;
+}
+
+.planet-5 {
+  --mint: #ffb259;
+  --mint-deep: #a65e12;
+  --planet-accent: #74efc2;
+}
+
+.planet-6 {
+  --mint: #ff7fa4;
+  --mint-deep: #a22d5c;
+  --planet-accent: #ffd166;
+}
+
+.planet-7 {
   --mint: #ffd166;
   --mint-deep: #a66c12;
   --planet-accent: #5bd3ff;
 }
 
-.planet-4 {
+.planet-8 {
   --mint: #a987ff;
   --mint-deep: #6542bd;
   --planet-accent: #55f2df;
@@ -61,6 +85,38 @@
 }
 
 .planet-4.site-shell {
+  background:
+    linear-gradient(rgba(169, 135, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(169, 135, 255, 0.022) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, #251d3e 0%, #0e0b18 40%, #07060d 75%);
+  background-size: 42px 42px, 42px 42px, auto;
+}
+
+.planet-5.site-shell {
+  background:
+    linear-gradient(rgba(255, 178, 89, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 178, 89, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, #3b2718 0%, #171009 42%, #080706 76%);
+  background-size: 42px 42px, 42px 42px, auto;
+}
+
+.planet-6.site-shell {
+  background:
+    linear-gradient(rgba(255, 127, 164, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 127, 164, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, #3b1b2a 0%, #170b11 42%, #080609 76%);
+  background-size: 42px 42px, 42px 42px, auto;
+}
+
+.planet-7.site-shell {
+  background:
+    linear-gradient(rgba(91, 211, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(91, 211, 255, 0.02) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, #202c31 0%, #0b1114 38%, #06090b 74%);
+  background-size: 42px 42px, 42px 42px, auto;
+}
+
+.planet-8.site-shell {
   background:
     linear-gradient(rgba(169, 135, 255, 0.022) 1px, transparent 1px),
     linear-gradient(90deg, rgba(169, 135, 255, 0.022) 1px, transparent 1px),
@@ -272,6 +328,58 @@ button:focus-visible {
   image-rendering: pixelated;
   touch-action: none;
   user-select: none;
+}
+
+.mechanic-intro {
+  width: min(430px, calc(100% - 28px));
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  z-index: 12;
+  display: grid;
+  gap: 5px;
+  padding: 14px 44px 14px 16px;
+  transform: translateX(-50%);
+  border: 1px solid color-mix(in srgb, var(--mint) 65%, white 8%);
+  border-left: 4px solid var(--mint);
+  background: rgba(5, 8, 10, 0.94);
+  box-shadow: 0 14px 38px rgba(0,0,0,0.45);
+  pointer-events: none;
+}
+
+.mechanic-intro > button {
+  width: 30px;
+  height: 30px;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.05);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.mechanic-intro small,
+.mechanic-intro em {
+  color: var(--mint);
+  font: normal 900 8px/1.2 "Courier New", monospace;
+  letter-spacing: 0.12em;
+}
+
+.mechanic-intro strong {
+  font-size: 15px;
+}
+
+.mechanic-intro p {
+  margin: 0;
+  color: #d4dcda;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mechanic-intro em {
+  color: #74807d;
+  letter-spacing: 0;
 }
 
 .screen-layer {
@@ -559,8 +667,12 @@ button:focus-visible {
 
 .planet-key-1 { --key-accent: #2377d5; }
 .planet-key-2 { --key-accent: #ff5d78; }
-.planet-key-3 { --key-accent: #ffd166; }
-.planet-key-4 { --key-accent: #a987ff; }
+.planet-key-3 { --key-accent: #5bd3ff; }
+.planet-key-4 { --key-accent: #9b7bff; }
+.planet-key-5 { --key-accent: #ffb259; }
+.planet-key-6 { --key-accent: #ff7fa4; }
+.planet-key-7 { --key-accent: #ffd166; }
+.planet-key-8 { --key-accent: #a987ff; }
 .wormhole-planet-key { --key-accent: #a987ff; }
 
 .planet-key:hover,
@@ -665,6 +777,19 @@ button:focus-visible {
   border-color: var(--mint);
   background: color-mix(in srgb, var(--mint) 9%, transparent);
   transform: translateY(-2px);
+}
+
+.stage-keypad button.is-boss {
+  border-color: color-mix(in srgb, var(--mint) 68%, white 12%);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--mint) 11%, transparent), transparent 58%),
+    rgba(255,255,255,0.035);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mint) 18%, transparent);
+}
+
+.stage-keypad button.is-boss small {
+  color: var(--mint);
+  letter-spacing: 0.08em;
 }
 
 .stage-keypad button:disabled {
@@ -1073,6 +1198,12 @@ button:focus-visible {
   letter-spacing: 0.12em;
 }
 
+.boss-run-state {
+  color: var(--mint);
+  font: 900 8px/1 "Courier New", monospace;
+  letter-spacing: 0.1em;
+}
+
 .stage-progress {
   display: flex;
   gap: 6px;
@@ -1101,6 +1232,11 @@ button:focus-visible {
   background: rgba(255,255,255,0.035);
   font-size: 21px;
   cursor: pointer;
+}
+
+.game-tools .mechanic-help-tool {
+  color: var(--mint);
+  font: 900 16px/1 Georgia, serif;
 }
 
 .speed-control {

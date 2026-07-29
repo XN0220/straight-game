@@ -74,8 +74,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://xn0220.github.io"),
-  title: "직진 게임 · 지구 훈련과 3개 행성 120개 맵",
-  description: "멈출 수 없는 직진 퍼즐. 지구에서 훈련하고 3개 행성을 탐사하세요!",
+  title: "직진 게임 · 지구 연구실과 7개 행성 240개 맵",
+  description: "충분히 생각하며 푸는 턴 기반 직진 퍼즐. 7개 행성에서 기믹을 하나씩 익혀보세요!",
   alternates: {
     canonical: "/straight-game/",
   },

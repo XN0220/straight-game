@@ -51,17 +51,28 @@ type MoveSnapshot = {
 
 const AVATAR_GRID = 10;
 const AVATAR_STORAGE_KEY = "straight-line-avatar-v2";
-const UNLOCK_STORAGE_KEY = "straight-line-unlocked-v7";
-const BEST_STORAGE_KEY = "straight-line-bests-v7";
-const LAST_STAGE_STORAGE_KEY = "straight-line-last-stage-v7";
-const PREVIOUS_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v6";
-const PREVIOUS_BEST_STORAGE_KEY = "straight-line-bests-v6";
+const UNLOCK_STORAGE_KEY = "straight-line-unlocked-v8";
+const BEST_STORAGE_KEY = "straight-line-bests-v8";
+const LAST_STAGE_STORAGE_KEY = "straight-line-last-stage-v8";
+const PREVIOUS_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v7";
+const PREVIOUS_BEST_STORAGE_KEY = "straight-line-bests-v7";
 const OLDER_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v5";
 const OLDER_BEST_STORAGE_KEY = "straight-line-bests-v5";
 const LEGACY_UNLOCK_STORAGE_KEY = "straight-line-unlocked-v2";
 const LEGACY_BEST_STORAGE_KEY = "straight-line-bests-v2";
 const MOVE_SPEED = 680;
 const TRAINING_SCENE_SCALE = 1.5;
+
+function sceneScaleFor(level: (typeof LEVELS)[number]) {
+  if (level.planet === 0) return TRAINING_SCENE_SCALE;
+  if (level.mapSize === "small") return 1.45;
+  if (level.mapSize === "medium") return 1.18;
+  return 1;
+}
+
+function isBossStage(localId: number) {
+  return localId === 10 || localId === 20 || localId === 30;
+}
 
 function solutionCheckpoint(level: (typeof LEVELS)[number]) {
   const targetMove = Math.max(1, Math.ceil(level.solution.length / 2));
@@ -524,6 +535,7 @@ export default function Home() {
     Array(LEVELS.length).fill(null),
   );
   const [showHelp, setShowHelp] = useState(false);
+  const [showMechanicIntro, setShowMechanicIntro] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
   const [moveSpeed, setMoveSpeed] = useState<MoveSpeed>(1);
@@ -558,7 +570,10 @@ export default function Home() {
       const currentUnlocks = JSON.parse(
         window.localStorage.getItem(UNLOCK_STORAGE_KEY) ?? "null",
       );
-      const previousUnlocked = window.localStorage.getItem(PREVIOUS_UNLOCK_STORAGE_KEY);
+      const previousUnlocks = JSON.parse(
+        window.localStorage.getItem(PREVIOUS_UNLOCK_STORAGE_KEY) ?? "null",
+      );
+      const previousUnlocked = window.localStorage.getItem("straight-line-unlocked-v6");
       const olderUnlocked = window.localStorage.getItem(OLDER_UNLOCK_STORAGE_KEY);
       const legacyUnlocked = Number(
         window.localStorage.getItem(LEGACY_UNLOCK_STORAGE_KEY) ?? "1",
@@ -583,6 +598,13 @@ export default function Home() {
       ) {
         unlockedValue = MAPS_PER_PLANET + 6;
       }
+      const migratedPlanetUnlocks = PLANETS.map(() => 1);
+      if (Array.isArray(previousUnlocks) && previousUnlocks.length === 4) {
+        migratedPlanetUnlocks[0] = Number(previousUnlocks[0]) || 1;
+        migratedPlanetUnlocks[1] = Number(previousUnlocks[1]) || 1;
+        migratedPlanetUnlocks[6] = Number(previousUnlocks[2]) || 1;
+        migratedPlanetUnlocks[7] = Number(previousUnlocks[3]) || 1;
+      }
       const safeUnlocks =
         Array.isArray(currentUnlocks) &&
         currentUnlocks.length === PLANETS.length &&
@@ -590,12 +612,16 @@ export default function Home() {
           ? currentUnlocks.map((value) =>
               Math.max(1, Math.min(MAPS_PER_PLANET, Math.floor(value))),
             )
-          : PLANETS.map((_, planetIndex) =>
-              Math.max(
-                1,
-                Math.min(MAPS_PER_PLANET, unlockedValue - planetIndex * MAPS_PER_PLANET),
-              ),
-            );
+          : Array.isArray(previousUnlocks) && previousUnlocks.length === 4
+            ? migratedPlanetUnlocks.map((value) =>
+                Math.max(1, Math.min(MAPS_PER_PLANET, Math.floor(value))),
+              )
+            : PLANETS.map((_, planetIndex) =>
+                Math.max(
+                  1,
+                  Math.min(MAPS_PER_PLANET, unlockedValue - planetIndex * MAPS_PER_PLANET),
+                ),
+              );
       setPlanetUnlocks(safeUnlocks);
       window.localStorage.setItem(UNLOCK_STORAGE_KEY, JSON.stringify(safeUnlocks));
 
@@ -624,14 +650,16 @@ export default function Home() {
         setStageBests(storedBests.map((best) => (typeof best === "number" ? best : null)));
       } else {
         const migratedBests = Array<number | null>(LEVELS.length).fill(null);
-        if (Array.isArray(previousBests) && previousBests.length === LEVELS.length) {
-          previousBests
-            .slice(MAPS_PER_PLANET)
-            .forEach((best, index) => {
-              if (typeof best === "number") {
-                migratedBests[index + MAPS_PER_PLANET] = best;
-              }
-            });
+        if (Array.isArray(previousBests) && previousBests.length === 120) {
+          previousBests.slice(0, 60).forEach((best, index) => {
+            if (typeof best === "number") migratedBests[index] = best;
+          });
+          previousBests.slice(60, 90).forEach((best, index) => {
+            if (typeof best === "number") migratedBests[180 + index] = best;
+          });
+          previousBests.slice(90, 120).forEach((best, index) => {
+            if (typeof best === "number") migratedBests[210 + index] = best;
+          });
         } else {
           const sourceBests = Array.isArray(olderBests)
             ? olderBests
@@ -716,6 +744,7 @@ export default function Home() {
       setIsDead(false);
       setNewBest(false);
       setHintVisible(false);
+      setShowMechanicIntro(level.planet > 0 && level.localId === 1);
       setCanUndo(false);
       setBump(false);
       setGameScreen("playing");
@@ -755,6 +784,7 @@ export default function Home() {
     dyingRef.current = false;
     setIsDead(false);
     setShowHelp(false);
+    setShowMechanicIntro(false);
     setShowEditor(false);
     setGameScreen("menu");
   }, [setGameScreen]);
@@ -850,6 +880,7 @@ export default function Home() {
   const commandMove = useCallback(
     (direction: Direction) => {
       if (screenRef.current !== "playing" || movingRef.current || dyingRef.current) return;
+      setShowMechanicIntro(false);
 
       const plan = slide(levelRef.current, cellRef.current, direction, runStateRef.current);
       if (plan.outcome === "blocked") {
@@ -1001,7 +1032,7 @@ export default function Home() {
         context.fillStyle = "#ff9b61";
         context.fillRect(x + 13, y + 14, 3, 3);
         context.fillRect(x + 21, y + 29, 3, 3);
-      } else if (planet === 2) {
+      } else if (planet === 6) {
         context.fillStyle = "#2b343b";
         context.fillRect(x, y, size, size);
         context.fillStyle = "#53616b";
@@ -1014,7 +1045,7 @@ export default function Home() {
         [[6, 6], [size - 8, 6], [6, size - 8], [size - 8, size - 8]].forEach(
           ([offsetX, offsetY]) => context.fillRect(x + offsetX, y + offsetY, 3, 3),
         );
-      } else {
+      } else if (planet === 7) {
         context.fillStyle = "#271d4b";
         context.fillRect(x, y, size, size);
         context.fillStyle = "#593b91";
@@ -1034,6 +1065,20 @@ export default function Home() {
         context.fill();
         context.fillStyle = "rgba(212, 248, 255, 0.82)";
         context.fillRect(x + 8, y + 7, 3, size - 17);
+      } else {
+        const planetMeta = PLANETS[planet];
+        context.fillStyle = "#182028";
+        context.fillRect(x, y, size, size);
+        context.fillStyle = planetMeta.accent;
+        context.globalAlpha = alpha * 0.72;
+        context.fillRect(x + 2, y + 2, size - 4, size - 4);
+        context.globalAlpha = alpha;
+        context.fillStyle = planetMeta.secondary;
+        context.fillRect(x + 5, y + 5, size - 10, 4);
+        context.fillRect(x + 7, y + 14, size - 14, size - 21);
+        context.strokeStyle = "rgba(255,255,255,0.45)";
+        context.lineWidth = 1;
+        context.strokeRect(x + 4, y + 4, size - 8, size - 8);
       }
       context.restore();
     };
@@ -1373,16 +1418,27 @@ export default function Home() {
       const sceneRunState =
         screenRef.current === "menu" ? INITIAL_RUN_STATE : runStateRef.current;
       const sceneAlpha = screenRef.current === "menu" ? 0.13 : 1;
-      const planetBackground = ["#f7fbfd", "#050508", "#071014", "#0b0717"][sceneLevel.planet];
+      const planetBackground = [
+        "#f7fbfd", "#050508", "#061017", "#0b0717",
+        "#160d06", "#16080f", "#071014", "#0b0717",
+      ][sceneLevel.planet];
       const planetGlow = [
         "rgba(151, 220, 235, 0.28)",
         "rgba(27, 46, 44, 0.32)",
+        "rgba(35, 120, 156, 0.34)",
+        "rgba(82, 48, 135, 0.42)",
+        "rgba(168, 94, 36, 0.38)",
+        "rgba(151, 49, 87, 0.38)",
         "rgba(32, 68, 79, 0.38)",
         "rgba(82, 48, 135, 0.42)",
       ][sceneLevel.planet];
       const gridColor = [
         "rgba(24, 94, 123, 0.13)",
         "rgba(148, 255, 223, 0.055)",
+        "rgba(91, 211, 255, 0.085)",
+        "rgba(186, 160, 255, 0.075)",
+        "rgba(255, 178, 89, 0.075)",
+        "rgba(255, 127, 164, 0.075)",
         "rgba(91, 211, 255, 0.07)",
         "rgba(186, 160, 255, 0.075)",
       ][sceneLevel.planet];
@@ -1407,9 +1463,10 @@ export default function Home() {
       drawBoundary(sceneLevel.planet, screenRef.current === "menu" ? 0.18 : 0.78);
 
       context.save();
-      if (sceneLevel.planet === 0) {
+      const sceneScale = sceneScaleFor(sceneLevel);
+      if (sceneScale !== 1) {
         context.translate(WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
-        context.scale(TRAINING_SCENE_SCALE, TRAINING_SCENE_SCALE);
+        context.scale(sceneScale, sceneScale);
         context.translate(-WORLD_WIDTH / 2, -WORLD_HEIGHT / 2);
       }
 
@@ -1520,6 +1577,9 @@ export default function Home() {
   const continueLevel =
     lastPlayedStage === null ? null : LEVELS[lastPlayedStage];
   const currentHintCheckpoint = solutionCheckpoint(currentLevel);
+  const currentBossSegment = isBossStage(currentLevel.localId)
+    ? Math.min(3, Math.floor(moves / Math.max(1, Math.ceil(currentLevel.par / 3))) + 1)
+    : 0;
   const visibleLevels = LEVELS.slice(
     selectedPlanet * MAPS_PER_PLANET,
     selectedPlanet * MAPS_PER_PLANET + MAPS_PER_PLANET,
@@ -1579,7 +1639,7 @@ export default function Home() {
           직진 게임
         </button>
         <div className="topbar-actions">
-          <span className="build-label">EARTH TRAINING + 3 PLANETS · 120 MAPS · ★ {totalStars}/360</span>
+          <span className="build-label">EARTH LAB + 7 PLANETS · 240 MAPS · ★ {totalStars}/720</span>
           <button
             className="icon-button"
             type="button"
@@ -1600,7 +1660,7 @@ export default function Home() {
           <div className="play-status-bar">
             <div className="game-hud" aria-live="polite">
               <div>
-                <span className="hud-label">MAP</span>
+                <span className="hud-label">{isBossStage(currentLevel.localId) ? "BOSS" : "MAP"}</span>
                 <strong>{String(currentLevel.localId).padStart(2, "0")}</strong>
               </div>
               <div className="hud-divider" />
@@ -1640,6 +1700,9 @@ export default function Home() {
 
             <div className="chapter-status" aria-label={currentChapterMeta.name + " 진행 중"}>
               <strong>{currentPlanetMeta.code} · {currentChapterMeta.code}</strong>
+              {currentBossSegment > 0 && (
+                <span className="boss-run-state">◆ BOSS {currentBossSegment}/3</span>
+              )}
               <div className="stage-progress">
                 {currentChapterLevels.map((level) => (
                   <span
@@ -1651,6 +1714,17 @@ export default function Home() {
             </div>
 
             <div className="game-tools">
+              {currentLevel.planet > 0 && (
+                <button
+                  className="mechanic-help-tool"
+                  type="button"
+                  onClick={() => setShowMechanicIntro(true)}
+                  aria-label={`${currentPlanetMeta.mechanic} 설명 다시 보기`}
+                  title="이 행성의 기믹 설명"
+                >
+                  i
+                </button>
+              )}
               {deaths >= 3 && (
                 <button
                   className={"hint-tool " + (hintVisible ? "is-active" : "")}
@@ -1704,6 +1778,22 @@ export default function Home() {
             onPointerUp={onPointerUp}
           />
 
+          {screen === "playing" && showMechanicIntro && currentLevel.planet > 0 && (
+            <aside className="mechanic-intro" aria-live="polite">
+              <button
+                type="button"
+                aria-label="기믹 설명 닫기"
+                onClick={() => setShowMechanicIntro(false)}
+              >
+                ×
+              </button>
+              <small>{currentLevel.localId === 1 ? "MAP 01 · NEW MECHANIC" : "MECHANIC HELP"}</small>
+              <strong>{currentPlanetMeta.mechanic}</strong>
+              <p>{currentPlanetMeta.tutorial}</p>
+              <em>설명을 닫지 않아도 바로 이동할 수 있습니다.</em>
+            </aside>
+          )}
+
           {screen === "menu" && (
             <div className="menu-layer screen-layer">
               <div className="menu-layout">
@@ -1711,14 +1801,14 @@ export default function Home() {
                   <p className="game-kicker">SLIDE · STOP · SURVIVE</p>
                   <h1>직진 게임</h1>
                   <p className="menu-copy">
-                    지구 연구실에서 조종 훈련을 마친 뒤 세 행성을 탐사하세요.
-                    쉬움 30개와 보통 90개, 총 120개 맵이 이어집니다.
+                    지구 연구실과 일곱 행성을 자유롭게 선택하세요.
+                    보통 난이도도 각 행성 1단계부터 기믹을 배우며 시작합니다.
                   </p>
                   <div className="menu-actions">
                     <button
                       className="primary-button"
                       type="button"
-                      aria-label="맵 선택: 쉬움 지구 궤도 연구실, 보통 아르코·기어라·프리즘"
+                      aria-label="맵 선택: 쉬움 지구 궤도 연구실과 보통 난이도 일곱 행성"
                       onClick={() => setMapSelectOpen(true)}
                     >
                       <span>맵 선택</span>
@@ -1839,6 +1929,7 @@ export default function Home() {
                         <button
                           key={level.id}
                           type="button"
+                          className={isBossStage(level.localId) ? "is-boss" : ""}
                           disabled={!isUnlocked}
                           aria-label={
                             isUnlocked
@@ -1853,7 +1944,13 @@ export default function Home() {
                         >
                           <strong>{String(level.localId).padStart(2, "0")}</strong>
                           <span>{"★".repeat(stars)}{"☆".repeat(3 - stars)}</span>
-                          <small>{isUnlocked ? `PAR ${level.par}` : "LOCK"}</small>
+                          <small>
+                            {isUnlocked
+                              ? isBossStage(level.localId)
+                                ? "◆ BOSS"
+                                : `PAR ${level.par}`
+                              : "LOCK"}
+                          </small>
                         </button>
                       );
                     })}
@@ -1883,7 +1980,7 @@ export default function Home() {
               <div className="win-card">
                 <span className="win-badge">
                   {isFinalStage
-                    ? "ALL 120 MAPS CLEAR"
+                    ? "ALL 240 MAPS CLEAR"
                     : isPlanetFinalStage
                       ? currentLevel.planet === 0
                         ? "EARTH TRAINING COMPLETE"
@@ -1965,8 +2062,8 @@ export default function Home() {
       </section>
 
       <footer className="site-footer">
-        <span>EARTH LAB + 3 PLANETS · 0.95 PLAYER · 120 VERIFIED MAPS</span>
-        <span>쉬움 30개 · 보통 90개 · 맵마다 별 3개</span>
+        <span>EARTH LAB + 7 PLANETS · 0.95 PLAYER · 240 VERIFIED MAPS</span>
+        <span>쉬움 30개 · 보통 210개 · 맵마다 별 3개</span>
       </footer>
 
       {showHelp && (
@@ -2008,8 +2105,8 @@ export default function Home() {
               <article>
                 <span>04</span>
                 <div>
-                  <h3>지구에서 기믹을 연습하고 행성을 골라 탐사하세요</h3>
-                  <p>연구실 30개 맵에서 일방통행·워프·게이트·회전·위상을 익힐 수 있고, 보통 난이도의 세 행성은 1번 맵부터 자유롭게 시작할 수 있습니다.</p>
+                  <h3>각 행성에서 한 가지 신규 기믹을 익히세요</h3>
+                  <p>보통 난이도의 일곱 행성은 모두 1번 맵부터 시작할 수 있습니다. 신규 기믹은 1~10단계에서 단독으로 익히고, 11단계부터 이전 기믹과 간헐적으로 조합됩니다.</p>
                 </div>
               </article>
               <article>
@@ -2029,8 +2126,8 @@ export default function Home() {
               <article>
                 <span>07</span>
                 <div>
-                  <h3>공식 120맵과 웜홀 실험 60맵</h3>
-                  <p>공식 맵은 최단 경로와 필수 기믹을 자동 검증합니다. 웜홀에서는 휘어진 원형 맵 30개와 여섯 방향으로 움직이는 육각형 맵 30개를 별도로 플레이할 수 있습니다.</p>
+                  <h3>공식 240맵과 웜홀 실험 90맵</h3>
+                  <p>공식 맵은 최단 경로·필수 기믹·최단 경로 수를 자동 검증합니다. 각 행성의 10·20·30단계는 앞에서 배운 규칙을 종합하는 보스 퍼즐입니다.</p>
                 </div>
               </article>
             </div>

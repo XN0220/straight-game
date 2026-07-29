@@ -1,5 +1,4 @@
-import { CAMPAIGN_ROWS } from "./campaign-data";
-import { EXPANSION_ROWS } from "./expansion-data";
+import { NORMAL_CAMPAIGN_ROWS } from "./normal-campaign-data";
 import { TRAINING_ROWS } from "./training-data";
 
 export type Direction = "up" | "down" | "left" | "right";
@@ -25,6 +24,7 @@ export type Planet = {
   location: "훈련 시설" | "탐사 행성";
   accent: string;
   secondary: string;
+  tutorial: string;
 };
 
 export type Chapter = {
@@ -70,6 +70,8 @@ export type Level = {
   phaseACells: Cell[];
   phaseB: Set<string>;
   phaseBCells: Cell[];
+  mapSize: "small" | "medium" | "full";
+  shortestPaths: number;
 };
 
 type SlideFeatures = number;
@@ -103,6 +105,9 @@ type RawStage = {
   name: string;
   rows: string[];
   expectedPar: number;
+  expectedMechanics?: string[];
+  shortestPaths?: number;
+  mapSize?: string;
 };
 
 export const GRID_COLS = 23;
@@ -133,6 +138,7 @@ export const PLANETS: Planet[] = [
     location: "훈련 시설",
     accent: "#2377d5",
     secondary: "#19a78f",
+    tutorial: "방향을 정하면 벽이나 기믹을 만날 때까지 직진합니다. 벽을 정지 지점으로 이용하세요.",
   },
   {
     id: 2,
@@ -140,14 +146,67 @@ export const PLANETS: Planet[] = [
     name: "화산 행성 아르코",
     shortName: "아르코",
     description: "검붉은 화산암과 빛나는 용암 균열로 뒤덮인 뜨거운 행성",
-    mechanic: "기본 기믹 종합",
+    mechanic: "기본 직진 이동",
     difficulty: "보통",
     location: "탐사 행성",
     accent: "#ff5d78",
-    secondary: "#74efc2",
+    secondary: "#ff9b61",
+    tutorial: "신규 기믹이 없는 기본 탐사입니다. 벽에 멈추는 위치와 이동 순서만으로 목표에 도달하세요.",
   },
   {
     id: 3,
+    code: "AERON",
+    name: "바람 행성 에어론",
+    shortName: "에어론",
+    description: "푸른 기류가 한쪽 방향으로만 통과를 허용하는 바람 행성",
+    mechanic: "일방통행",
+    difficulty: "보통",
+    location: "탐사 행성",
+    accent: "#5bd3ff",
+    secondary: "#74efc2",
+    tutorial: "화살표 타일은 표시 방향으로만 통과할 수 있습니다. 반대 방향에서는 벽처럼 멈춥니다.",
+  },
+  {
+    id: 4,
+    code: "NEXUS",
+    name: "균열 행성 넥서스",
+    shortName: "넥서스",
+    description: "보라색 공간 균열이 먼 구역을 한 쌍으로 연결하는 행성",
+    mechanic: "포탈",
+    difficulty: "보통",
+    location: "탐사 행성",
+    accent: "#9b7bff",
+    secondary: "#5bd3ff",
+    tutorial: "보라색 포탈에 닿으면 짝이 되는 포탈로 이동해 멈춥니다. 도착 위치에서 다음 방향을 정하세요.",
+  },
+  {
+    id: 5,
+    code: "VOLTERA",
+    name: "발전 행성 볼테라",
+    shortName: "볼테라",
+    description: "전력 스위치로 잠긴 게이트를 여는 주황빛 발전 행성",
+    mechanic: "스위치와 문",
+    difficulty: "보통",
+    location: "탐사 행성",
+    accent: "#ffb259",
+    secondary: "#74efc2",
+    tutorial: "스위치에 닿으면 문이 열린 상태로 유지됩니다. 문을 먼저 찾기보다 스위치에 접근할 순서를 계산하세요.",
+  },
+  {
+    id: 6,
+    code: "SHARDIA",
+    name: "결정 행성 샤디아",
+    shortName: "샤디아",
+    description: "충돌하면 부서지고 이후 통과할 수 있는 결정 블록의 행성",
+    mechanic: "파괴 블록",
+    difficulty: "보통",
+    location: "탐사 행성",
+    accent: "#ff7fa4",
+    secondary: "#ffd166",
+    tutorial: "금이 간 블록에 부딪히면 그 자리에서 부서집니다. 이후 같은 위치를 다시 지나갈 수 있습니다.",
+  },
+  {
+    id: 7,
     code: "GEARA",
     name: "기계 행성 기어라",
     shortName: "기어라",
@@ -157,9 +216,10 @@ export const PLANETS: Planet[] = [
     location: "탐사 행성",
     accent: "#ffd166",
     secondary: "#5bd3ff",
+    tutorial: "노란 회전 패드를 지나면 이동 방향이 시계 방향으로 90도 꺾입니다. 꺾인 뒤의 정지 위치를 먼저 생각하세요.",
   },
   {
-    id: 4,
+    id: 8,
     code: "PRISM",
     name: "수정 행성 프리즘",
     shortName: "프리즘",
@@ -169,6 +229,7 @@ export const PLANETS: Planet[] = [
     location: "탐사 행성",
     accent: "#a987ff",
     secondary: "#55f2df",
+    tutorial: "위상 스위치에 닿으면 청록 벽과 보라 벽의 충돌 상태가 서로 바뀝니다. 현재 위상에서 열린 색을 확인하세요.",
   },
 ];
 
@@ -186,26 +247,30 @@ function chapter(
   return { id, planet, zone, code, name, range, description, mechanics, accent };
 }
 
-const SPACE_CHAPTERS: Chapter[] = [
-  chapter(1, 0, 0, "BASIC", "기본 궤도", "PAR 8–12", "화산암에서 멈추는 감각과 위험한 경계를 익히는 구역", ["화산암", "위험 경계"], "#ff5d78"),
-  chapter(2, 0, 1, "DETOUR", "우회 구역", "PAR 12–16", "넓은 공간의 정지점을 골라 긴 우회 궤도를 만드는 구역", ["미끼 정지점", "다중 선택"], "#ffd166"),
-  chapter(3, 0, 2, "ONE-WAY", "화살표 구역", "PAR 16–20", "표시된 방향으로만 통과할 수 있는 일방통행 구역", ["일방통행", "역방향 차단"], "#5bd3ff"),
-  chapter(4, 0, 3, "WARP", "워프 회로", "PAR 20–24", "보라색 워프 쌍과 일방통행을 함께 계산하는 구역", ["워프", "일방통행"], "#9b7bff"),
-  chapter(5, 0, 4, "SWITCH", "스위치 요새", "PAR 24–28", "먼저 스위치를 밟아 잠긴 문을 열어야 하는 구역", ["스위치", "잠금 문", "워프"], "#ffb259"),
-  chapter(6, 0, 5, "MASTER", "마스터 코어", "PAR 28–34", "금 간 블록을 부수고 모든 규칙을 엮어 푸는 최종 구역", ["파괴 블록", "스위치", "워프", "일방통행"], "#ff5d78"),
-  chapter(7, 1, 0, "GEAR-1", "회전 입문", "PAR 7–11", "노란 회전 패드를 지나면 진행 방향이 시계 방향으로 꺾입니다", ["회전 패드", "금속 블록"], "#ffd166"),
-  chapter(8, 1, 1, "GEAR-2", "철제 우회", "PAR 10–14", "회전 뒤의 정지점을 읽고 열린 공장을 크게 우회합니다", ["회전 패드", "긴 이동"], "#f6bf45"),
-  chapter(9, 1, 2, "GEAR-3", "연속 회전", "PAR 13–17", "여러 톱니가 한 번의 이동을 연달아 꺾습니다", ["연속 회전", "방향 예측"], "#f7ad3e"),
-  chapter(10, 1, 3, "GEAR-4", "동력 회로", "PAR 16–20", "미끼 톱니 사이에서 필요한 회전만 골라야 합니다", ["미끼 회전", "다중 선택"], "#ff9954"),
-  chapter(11, 1, 4, "GEAR-5", "과열 공장", "PAR 19–23", "열린 경계와 촘촘한 회전 선택을 함께 계산합니다", ["위험 경계", "회전 연계"], "#ff7b55"),
-  chapter(12, 1, 5, "TURBINE", "터빈 코어", "PAR 22–28", "기계 행성의 모든 회전 규칙을 연결하는 최종 구역", ["회전 패드", "최장 궤도"], "#ff5d78"),
-  chapter(13, 2, 0, "PHASE-1", "위상 입문", "PAR 7–11", "스위치를 밟으면 청록 벽과 보라 벽의 충돌 상태가 뒤바뀝니다", ["위상 스위치", "청록 벽"], "#55f2df"),
-  chapter(14, 2, 1, "PHASE-2", "이중 장벽", "PAR 10–14", "한쪽이 열리면 다른 쪽이 닫히는 두 색 장벽을 읽습니다", ["청록 벽", "보라 벽"], "#67d8ef"),
-  chapter(15, 2, 2, "PHASE-3", "공명 우회", "PAR 13–17", "스위치 전후에 같은 길이 다른 정지점으로 바뀝니다", ["위상 전환", "경로 변화"], "#7abdf8"),
-  chapter(16, 2, 3, "RESONATE", "회전 공명", "PAR 16–20", "이전 행성의 회전 패드가 위상 장벽과 함께 돌아옵니다", ["위상 전환", "회전 패드"], "#8fa4ff"),
-  chapter(17, 2, 4, "PHASE-5", "불안정 파장", "PAR 19–23", "두 스위치와 회전 패드가 매 이동의 결과를 바꿉니다", ["다중 스위치", "회전 연계"], "#a987ff"),
-  chapter(18, 2, 5, "PRISM-CORE", "프리즘 코어", "PAR 22–28", "두 행성의 신규 규칙을 결합한 마지막 5개 맵", ["위상 전환", "회전 패드", "최장 궤도"], "#c878ff"),
-];
+const NORMAL_ZONE_META = [
+  ["INTRO", "기믹 입문", "PAR 2–5", "작은 맵에서 신규 기믹의 작동과 기본 접근 방향을 익힙니다."],
+  ["BOSS-1", "기초 응용", "PAR 5–9", "같은 기믹을 여러 번 사용하고 10단계의 첫 보스에 도전합니다."],
+  ["MID", "중간 맵 적응", "PAR 7–11", "조금 넓어진 맵에서 이전 기믹이 간헐적으로 다시 등장합니다."],
+  ["BOSS-2", "순서와 재방문", "PAR 10–17", "기믹 사용 순서와 구역 재방문을 계산해 20단계 보스를 해결합니다."],
+  ["ADVANCED", "고급 우회", "PAR 14–20", "가까운 길을 포기하고 반대 방향과 우회 경로를 읽습니다."],
+  ["FINAL", "최종 도전", "PAR 20–30", "20수 이상의 장거리 퍼즐과 30단계 최종 보스에 도전합니다."],
+] as const;
+
+const SPACE_CHAPTERS: Chapter[] = PLANETS.slice(1).flatMap((planet, planetIndex) =>
+  NORMAL_ZONE_META.map((meta, zone) =>
+    chapter(
+      planetIndex * ZONES_PER_PLANET + zone + 1,
+      planetIndex,
+      zone,
+      `${planet.code}-${meta[0]}`,
+      meta[1],
+      meta[2],
+      meta[3],
+      zone < 2 ? [planet.mechanic] : [planet.mechanic, "이전 기믹 간헐 조합"],
+      planet.accent,
+    ),
+  ),
+);
 
 export const CHAPTERS: Chapter[] = [
   chapter(1, 0, 0, "LAB-1", "직진 기초", "PAR 1–3", "벽까지 직진하고 파란 블록에서 멈추는 기본 이동을 익히는 구역", ["기본 이동", "정지 블록"], "#2377d5"),
@@ -401,7 +466,12 @@ export function slide(
     if (requiredDirection) features |= FEATURE.oneWay;
     if (level.gates.has(nextKey) && runState.gateOpen) features |= FEATURE.gate;
     if (fragileIndex >= 0) features |= FEATURE.brokenPass;
-    if (level.phaseA.has(nextKey) && runState.phase === 1) features |= FEATURE.phaseGate;
+    if (
+      (level.phaseA.has(nextKey) && runState.phase === 1) ||
+      (level.phaseB.has(nextKey) && runState.phase === 0)
+    ) {
+      features |= FEATURE.phaseGate;
+    }
 
     if (sameCell(current, level.goal)) {
       return {
@@ -538,11 +608,22 @@ function measureSolution(
 
   return {
     average: distances.reduce((sum, distance) => sum + distance, 0) / distances.length,
-    longMoves: distances.filter((distance) => distance >= 4).length,
+    longMoves: distances.filter((distance) => distance >= 3).length,
   };
 }
 
-function requiredFeatures(planet: number, zone: number) {
+function requiredFeatures(planet: number, zone: number, expectedMechanics?: string[]) {
+  if (expectedMechanics) {
+    return expectedMechanics.reduce((features, mechanic) => {
+      if (mechanic === "oneWay") return features | FEATURE.oneWay;
+      if (mechanic === "portal") return features | FEATURE.portal;
+      if (mechanic === "switch") return features | FEATURE.switch | FEATURE.gate;
+      if (mechanic === "fragile") return features | FEATURE.break | FEATURE.brokenPass;
+      if (mechanic === "rotator") return features | FEATURE.rotator;
+      if (mechanic === "phase") return features | FEATURE.phaseSwitch | FEATURE.phaseGate;
+      return features;
+    }, 0);
+  }
   if (planet === 0) {
     if (zone === 1) return FEATURE.oneWay;
     if (zone === 2) return FEATURE.portal;
@@ -551,33 +632,26 @@ function requiredFeatures(planet: number, zone: number) {
     if (zone === 5) return FEATURE.phaseSwitch | FEATURE.phaseGate | FEATURE.rotator;
     return 0;
   }
-  if (planet === 1) {
-    if (zone === 2) return FEATURE.oneWay;
-    if (zone === 3) return FEATURE.oneWay | FEATURE.portal;
-    if (zone === 4) return FEATURE.oneWay | FEATURE.portal | FEATURE.switch | FEATURE.gate;
-    if (zone === 5) {
-      return (
-        FEATURE.oneWay |
-        FEATURE.portal |
-        FEATURE.switch |
-        FEATURE.gate |
-        FEATURE.break |
-        FEATURE.brokenPass
-      );
-    }
-    return 0;
-  }
-  if (planet === 2) return FEATURE.rotator;
-  return FEATURE.phaseSwitch | FEATURE.phaseGate | (zone >= 3 ? FEATURE.rotator : 0);
+  return 0;
 }
 
 const MAX_WALLS_BY_ZONE = [110, 100, 88, 86, 92, 98];
 
 function buildLevel(stage: RawStage): Level {
-  const { id, name, rows, expectedPar } = stage;
+  const {
+    id,
+    name,
+    rows,
+    expectedPar,
+    expectedMechanics,
+    shortestPaths = 1,
+    mapSize = "full",
+  } = stage;
   if (rows.length !== GRID_ROWS || rows.some((row) => row.length !== GRID_COLS)) {
     throw new Error("Stage " + id + " has an invalid grid size.");
   }
+  const normalizedMapSize =
+    mapSize === "small" || mapSize === "medium" ? mapSize : "full";
 
   const blocks = new Set<string>();
   const blockCells: Cell[] = [];
@@ -662,6 +736,12 @@ function buildLevel(stage: RawStage): Level {
   if (phaseSwitchCells.length > 0 || phaseACells.length > 0 || phaseBCells.length > 0) {
     mechanics.push("phase");
   }
+  if (planet > 0 && mechanics.length > 2) {
+    throw new Error("Stage " + id + " uses more than two different mechanic types.");
+  }
+  if (planet > 0 && localId <= 10 && mechanics.length > 1) {
+    throw new Error("Stage " + id + " introduces more than one mechanic in maps 1–10.");
+  }
 
   const base = {
     blocks,
@@ -689,10 +769,14 @@ function buildLevel(stage: RawStage): Level {
   }
   const movement = measureSolution(base, solved.path);
   const minimumLongMoves = Math.max(
-    planet === 0 ? 0 : planet === 1 ? 3 : 2,
-    Math.floor(expectedPar * (planet === 0 ? 0 : planet === 1 ? 0.3 : 0.24)),
+    planet === 0 ? 0 : 1,
+    Math.floor(
+      expectedPar *
+        (planet === 0 ? 0 : localId <= 10 ? 0.16 : 0.22),
+    ),
   );
-  const minimumAverage = planet === 0 ? 2 : planet === 1 ? 3 : 2.7;
+  const minimumAverage =
+    planet === 0 ? 2 : localId <= 10 ? 1.7 : localId <= 20 ? 2.1 : 2.7;
   if (
     !movement ||
     movement.average < minimumAverage ||
@@ -700,9 +784,28 @@ function buildLevel(stage: RawStage): Level {
   ) {
     throw new Error("Stage " + id + " does not preserve enough straight-line movement.");
   }
-  const required = requiredFeatures(planet, zone);
+  const required = requiredFeatures(planet, zone, expectedMechanics);
   if ((solved.features & required) !== required) {
     throw new Error("Stage " + id + " does not require all chapter mechanics.");
+  }
+  if (planet > 0) {
+    const parRanges: Array<[number, number]> = [
+      [2, 5], [5, 9], [7, 11], [10, 17], [14, 20], [20, 30],
+    ];
+    const [minimumPar, maximumPar] = parRanges[zone];
+    if (expectedPar < minimumPar || expectedPar > maximumPar) {
+      throw new Error("Stage " + id + " is outside its intended PAR range.");
+    }
+    if (localId >= 26 && expectedPar < 20) {
+      throw new Error("Stage " + id + " must require at least 20 moves.");
+    }
+    const intendedSize = localId <= 10 ? "small" : localId <= 20 ? "medium" : "full";
+    if (normalizedMapSize !== intendedSize) {
+      throw new Error("Stage " + id + " has the wrong visual map size.");
+    }
+    if (shortestPaths < 1 || shortestPaths > 4) {
+      throw new Error("Stage " + id + " has too many verified shortest paths.");
+    }
   }
 
   return {
@@ -736,16 +839,17 @@ function buildLevel(stage: RawStage): Level {
     phaseACells,
     phaseB,
     phaseBCells,
+    mapSize: normalizedMapSize,
+    shortestPaths,
   };
 }
 
 const ALL_ROWS: RawStage[] = [
   ...TRAINING_ROWS,
-  ...CAMPAIGN_ROWS,
-  ...EXPANSION_ROWS,
+  ...NORMAL_CAMPAIGN_ROWS,
 ].map((stage, index) => ({ ...stage, id: index + 1 }));
 
-// 지구 훈련 30개와 기존 우주 탐사 90개를 모두 BFS로 다시 검증합니다.
+// 지구 훈련 30개와 기믹별 보통 난이도 210개를 모두 BFS로 다시 검증합니다.
 export const LEVELS: Level[] = ALL_ROWS.map(buildLevel);
 
 export function starsFor(best: number | null, par: number) {
