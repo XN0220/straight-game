@@ -89,10 +89,25 @@ test("keeps planet map colors aligned and provides twelve ready-made avatars", a
   assert.match(engineSource, /화산 행성 아르코/);
   assert.doesNotMatch(engineSource, /벽돌 행성 아르코|붉은 벽돌 행성/);
   assert.match(pageSource, /<strong>\{planet\.name\}<\/strong>/);
-  assert.match(globalCssSource, /\.planet-2\s*\{[^}]*--mint:\s*#ff5d78/s);
-  assert.match(globalCssSource, /\.planet-key-2\s*\{\s*--key-accent:\s*#ff5d78/);
-  assert.match(globalCssSource, /\.planet-8\s*\{[^}]*--mint:\s*#a987ff/s);
-  assert.match(globalCssSource, /\.planet-key-8\s*\{\s*--key-accent:\s*#a987ff/);
+  const normalPlanetColors = [
+    "#ff4d5f", "#29c5f6", "#8d65ff", "#ff8a2b", "#27d49b", "#f4c542", "#ec6fe7",
+  ];
+  assert.equal(new Set(normalPlanetColors).size, 7);
+  normalPlanetColors.forEach((color, index) => {
+    const planetNumber = index + 2;
+    assert.match(
+      globalCssSource,
+      new RegExp(`\\.planet-${planetNumber}\\s*\\{[^}]*--mint:\\s*${color}`, "s"),
+    );
+    assert.match(
+      globalCssSource,
+      new RegExp(`\\.planet-key-${planetNumber}\\s*\\{\\s*--key-accent:\\s*${color}`),
+    );
+    assert.match(
+      globalCssSource,
+      new RegExp(`\\.planet-key-${planetNumber} \\.planet-image\\s*\\{`),
+    );
+  });
   assert.match(globalCssSource, /@media \(max-width: 720px\)[\s\S]*?\.planet-keypad-tabs\s*\{[^}]*grid-template-columns:\s*repeat\(2,/);
 });
 

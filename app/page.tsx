@@ -1014,9 +1014,9 @@ export default function Home() {
         context.lineTo(x + 3, y + 22);
         context.closePath();
         context.fill();
-        context.strokeStyle = "#ff5d78";
+        context.strokeStyle = "#ff4d5f";
         context.lineWidth = 2;
-        context.shadowColor = "#ff5d78";
+        context.shadowColor = "#ff4d5f";
         context.shadowBlur = 5;
         context.beginPath();
         context.moveTo(x + 6, y + 8);
@@ -1029,7 +1029,7 @@ export default function Home() {
         context.lineTo(x + 5, y + 30);
         context.stroke();
         context.shadowBlur = 0;
-        context.fillStyle = "#ff9b61";
+        context.fillStyle = "#ff9a3d";
         context.fillRect(x + 13, y + 14, 3, 3);
         context.fillRect(x + 21, y + 29, 3, 3);
       } else if (planet === 6) {
@@ -1041,7 +1041,7 @@ export default function Home() {
         context.fillRect(x + 5, y + 5, size - 10, 3);
         context.fillStyle = "#1b2227";
         context.fillRect(x + 8, y + 12, size - 16, size - 20);
-        context.fillStyle = "#ffd166";
+        context.fillStyle = "#f4c542";
         [[6, 6], [size - 8, 6], [6, size - 8], [size - 8, size - 8]].forEach(
           ([offsetX, offsetY]) => context.fillRect(x + offsetX, y + offsetY, 3, 3),
         );
@@ -1056,7 +1056,7 @@ export default function Home() {
         context.lineTo(x + 8, y + size - 5);
         context.closePath();
         context.fill();
-        context.fillStyle = "#a987ff";
+        context.fillStyle = "#ec6fe7";
         context.beginPath();
         context.moveTo(x + 5, y + 5);
         context.lineTo(x + size - 8, y + 9);
@@ -1316,15 +1316,16 @@ export default function Home() {
     const drawBoundary = (planet: number, alpha = 1) => {
       context.save();
       context.globalAlpha = alpha;
-      context.strokeStyle = planet === 0 ? "#ef9b3f" : "#ff5d78";
+      const planetAccent = planet === 0 ? "#ef9b3f" : PLANETS[planet].accent;
+      context.strokeStyle = planetAccent;
       context.lineWidth = 4;
       context.shadowColor =
-        planet === 0 ? "rgba(239, 155, 63, 0.4)" : "rgba(255, 93, 120, 0.55)";
+        planet === 0 ? "rgba(239, 155, 63, 0.4)" : planetAccent;
       context.shadowBlur = 10;
       context.strokeRect(2, 2, WORLD_WIDTH - 4, WORLD_HEIGHT - 4);
       context.shadowBlur = 0;
       context.strokeStyle =
-        planet === 0 ? "rgba(180, 104, 28, 0.42)" : "rgba(255, 160, 176, 0.5)";
+        planet === 0 ? "rgba(180, 104, 28, 0.42)" : PLANETS[planet].secondary;
       context.lineWidth = 2;
       context.setLineDash([9, 13]);
       context.strokeRect(7, 7, WORLD_WIDTH - 14, WORLD_HEIGHT - 14);
@@ -1420,27 +1421,27 @@ export default function Home() {
       const sceneAlpha = screenRef.current === "menu" ? 0.13 : 1;
       const planetBackground = [
         "#f7fbfd", "#050508", "#061017", "#0b0717",
-        "#160d06", "#16080f", "#071014", "#0b0717",
+        "#160d06", "#06140f", "#151105", "#160714",
       ][sceneLevel.planet];
       const planetGlow = [
         "rgba(151, 220, 235, 0.28)",
         "rgba(27, 46, 44, 0.32)",
-        "rgba(35, 120, 156, 0.34)",
-        "rgba(82, 48, 135, 0.42)",
-        "rgba(168, 94, 36, 0.38)",
-        "rgba(151, 49, 87, 0.38)",
-        "rgba(32, 68, 79, 0.38)",
-        "rgba(82, 48, 135, 0.42)",
+        "rgba(27, 132, 166, 0.36)",
+        "rgba(92, 58, 160, 0.42)",
+        "rgba(179, 82, 21, 0.4)",
+        "rgba(16, 132, 92, 0.38)",
+        "rgba(137, 106, 16, 0.38)",
+        "rgba(157, 49, 151, 0.42)",
       ][sceneLevel.planet];
       const gridColor = [
         "rgba(24, 94, 123, 0.13)",
         "rgba(148, 255, 223, 0.055)",
-        "rgba(91, 211, 255, 0.085)",
-        "rgba(186, 160, 255, 0.075)",
-        "rgba(255, 178, 89, 0.075)",
-        "rgba(255, 127, 164, 0.075)",
-        "rgba(91, 211, 255, 0.07)",
-        "rgba(186, 160, 255, 0.075)",
+        "rgba(41, 197, 246, 0.085)",
+        "rgba(196, 167, 255, 0.075)",
+        "rgba(255, 138, 43, 0.075)",
+        "rgba(39, 212, 155, 0.075)",
+        "rgba(244, 197, 66, 0.07)",
+        "rgba(236, 111, 231, 0.075)",
       ][sceneLevel.planet];
 
       context.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);

@@ -19,45 +19,45 @@
 }
 
 .planet-2 {
-  --mint: #ff5d78;
+  --mint: #ff4d5f;
   --mint-deep: #9f233b;
-  --planet-accent: #ff9b61;
+  --planet-accent: #ff9a3d;
 }
 
 .planet-3 {
-  --mint: #5bd3ff;
+  --mint: #29c5f6;
   --mint-deep: #197c9f;
-  --planet-accent: #74efc2;
+  --planet-accent: #b6f0ff;
 }
 
 .planet-4 {
-  --mint: #9b7bff;
+  --mint: #8d65ff;
   --mint-deep: #5c3bb8;
-  --planet-accent: #5bd3ff;
+  --planet-accent: #c4a7ff;
 }
 
 .planet-5 {
-  --mint: #ffb259;
+  --mint: #ff8a2b;
   --mint-deep: #a65e12;
-  --planet-accent: #74efc2;
+  --planet-accent: #ffd45c;
 }
 
 .planet-6 {
-  --mint: #ff7fa4;
-  --mint-deep: #a22d5c;
-  --planet-accent: #ffd166;
+  --mint: #27d49b;
+  --mint-deep: #087b5a;
+  --planet-accent: #8fffe0;
 }
 
 .planet-7 {
-  --mint: #ffd166;
+  --mint: #f4c542;
   --mint-deep: #a66c12;
-  --planet-accent: #5bd3ff;
+  --planet-accent: #fff0a6;
 }
 
 .planet-8 {
-  --mint: #a987ff;
-  --mint-deep: #6542bd;
-  --planet-accent: #55f2df;
+  --mint: #ec6fe7;
+  --mint-deep: #8f288b;
+  --planet-accent: #ffc0f6;
 }
 
 .planet-1.site-shell {
@@ -78,49 +78,49 @@
 
 .planet-3.site-shell {
   background:
-    linear-gradient(rgba(91, 211, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(91, 211, 255, 0.02) 1px, transparent 1px),
-    radial-gradient(circle at 50% 15%, #202c31 0%, #0b1114 38%, #06090b 74%);
+    linear-gradient(rgba(41, 197, 246, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(41, 197, 246, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, #153846 0%, #09161b 40%, #05090b 75%);
   background-size: 42px 42px, 42px 42px, auto;
 }
 
 .planet-4.site-shell {
   background:
-    linear-gradient(rgba(169, 135, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(169, 135, 255, 0.022) 1px, transparent 1px),
-    radial-gradient(circle at 50% 15%, #251d3e 0%, #0e0b18 40%, #07060d 75%);
+    linear-gradient(rgba(141, 101, 255, 0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(141, 101, 255, 0.024) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, #291d49 0%, #100b1d 40%, #07060d 75%);
   background-size: 42px 42px, 42px 42px, auto;
 }
 
 .planet-5.site-shell {
   background:
-    linear-gradient(rgba(255, 178, 89, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 178, 89, 0.025) 1px, transparent 1px),
-    radial-gradient(circle at 50% 15%, #3b2718 0%, #171009 42%, #080706 76%);
+    linear-gradient(rgba(255, 138, 43, 0.026) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 138, 43, 0.026) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, #3e2411 0%, #190e07 42%, #090705 76%);
   background-size: 42px 42px, 42px 42px, auto;
 }
 
 .planet-6.site-shell {
   background:
-    linear-gradient(rgba(255, 127, 164, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 127, 164, 0.025) 1px, transparent 1px),
-    radial-gradient(circle at 50% 15%, #3b1b2a 0%, #170b11 42%, #080609 76%);
+    linear-gradient(rgba(39, 212, 155, 0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(39, 212, 155, 0.024) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, #123a2d 0%, #071710 42%, #050906 76%);
   background-size: 42px 42px, 42px 42px, auto;
 }
 
 .planet-7.site-shell {
   background:
-    linear-gradient(rgba(91, 211, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(91, 211, 255, 0.02) 1px, transparent 1px),
-    radial-gradient(circle at 50% 15%, #202c31 0%, #0b1114 38%, #06090b 74%);
+    linear-gradient(rgba(244, 197, 66, 0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 197, 66, 0.024) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, #37301a 0%, #151208 40%, #080704 75%);
   background-size: 42px 42px, 42px 42px, auto;
 }
 
 .planet-8.site-shell {
   background:
-    linear-gradient(rgba(169, 135, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(169, 135, 255, 0.022) 1px, transparent 1px),
-    radial-gradient(circle at 50% 15%, #251d3e 0%, #0e0b18 40%, #07060d 75%);
+    linear-gradient(rgba(236, 111, 231, 0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(236, 111, 231, 0.024) 1px, transparent 1px),
+    radial-gradient(circle at 50% 15%, #401c3e 0%, #180a17 40%, #090508 75%);
   background-size: 42px 42px, 42px 42px, auto;
 }
 
@@ -666,13 +666,13 @@ button:focus-visible {
 }
 
 .planet-key-1 { --key-accent: #2377d5; }
-.planet-key-2 { --key-accent: #ff5d78; }
-.planet-key-3 { --key-accent: #5bd3ff; }
-.planet-key-4 { --key-accent: #9b7bff; }
-.planet-key-5 { --key-accent: #ffb259; }
-.planet-key-6 { --key-accent: #ff7fa4; }
-.planet-key-7 { --key-accent: #ffd166; }
-.planet-key-8 { --key-accent: #a987ff; }
+.planet-key-2 { --key-accent: #ff4d5f; }
+.planet-key-3 { --key-accent: #29c5f6; }
+.planet-key-4 { --key-accent: #8d65ff; }
+.planet-key-5 { --key-accent: #ff8a2b; }
+.planet-key-6 { --key-accent: #27d49b; }
+.planet-key-7 { --key-accent: #f4c542; }
+.planet-key-8 { --key-accent: #ec6fe7; }
 .wormhole-planet-key { --key-accent: #a987ff; }
 
 .planet-key:hover,
@@ -698,12 +698,73 @@ button:focus-visible {
 .planet-key-2 .planet-image {
   background:
     linear-gradient(135deg, rgba(255, 224, 210, 0.72), transparent 26%),
-    linear-gradient(38deg, transparent 0 43%, #ff5d78 44% 48%, transparent 49%),
-    linear-gradient(118deg, transparent 0 57%, #ff9b61 58% 61%, transparent 62%),
+    linear-gradient(38deg, transparent 0 43%, #ff4d5f 44% 48%, transparent 49%),
+    linear-gradient(118deg, transparent 0 57%, #ff9a3d 58% 61%, transparent 62%),
     radial-gradient(circle at 64% 66%, #9f3040, #3b1018 72%);
   box-shadow:
     inset -8px -7px 12px rgba(23, 3, 8, 0.62),
-    0 0 22px rgba(255, 93, 120, 0.5);
+    0 0 22px rgba(255, 77, 95, 0.5);
+}
+
+.planet-key-3 .planet-image {
+  background:
+    linear-gradient(142deg, rgba(255,255,255,0.78), transparent 26%),
+    repeating-radial-gradient(ellipse at 25% 58%, transparent 0 8px, rgba(214,247,255,0.72) 9px 11px, transparent 12px 16px),
+    radial-gradient(circle at 66% 68%, #29c5f6, #0d5876 70%);
+  box-shadow:
+    inset -8px -7px 12px rgba(2, 38, 53, 0.56),
+    0 0 22px rgba(41, 197, 246, 0.48);
+}
+
+.planet-key-4 .planet-image {
+  background:
+    linear-gradient(138deg, rgba(255,255,255,0.64), transparent 24%),
+    linear-gradient(62deg, transparent 0 45%, #c4a7ff 46% 49%, transparent 50%),
+    linear-gradient(118deg, transparent 0 55%, #6c3df1 56% 60%, transparent 61%),
+    radial-gradient(circle at 54% 48%, #080315 0 18%, #8d65ff 22% 48%, #281158 72%);
+  box-shadow:
+    inset -8px -7px 12px rgba(15, 3, 38, 0.66),
+    0 0 22px rgba(141, 101, 255, 0.52);
+}
+
+.planet-key-5 .planet-image {
+  background:
+    linear-gradient(135deg, rgba(255,250,220,0.72), transparent 25%),
+    linear-gradient(90deg, transparent 0 18%, #ffd45c 19% 23%, transparent 24% 64%, #ffd45c 65% 69%, transparent 70%),
+    linear-gradient(0deg, transparent 0 29%, rgba(255,212,92,0.85) 30% 34%, transparent 35% 70%, rgba(255,212,92,0.72) 71% 75%, transparent 76%),
+    radial-gradient(circle at 65% 68%, #ff8a2b, #713109 72%);
+  box-shadow:
+    inset -8px -7px 12px rgba(57, 22, 2, 0.62),
+    0 0 22px rgba(255, 138, 43, 0.5);
+}
+
+.planet-key-6 .planet-image {
+  background:
+    linear-gradient(135deg, rgba(235,255,248,0.82), transparent 26%),
+    conic-gradient(from 18deg at 50% 50%, #8fffe0 0 12%, #168c69 13% 27%, #4ee6b8 28% 43%, #0d5c47 44% 59%, #72f2cf 60% 76%, #168c69 77% 100%);
+  box-shadow:
+    inset -8px -7px 12px rgba(2, 48, 35, 0.6),
+    0 0 22px rgba(39, 212, 155, 0.5);
+}
+
+.planet-key-7 .planet-image {
+  background:
+    linear-gradient(135deg, rgba(255,255,230,0.76), transparent 25%),
+    radial-gradient(circle at 50% 50%, #4b3c10 0 15%, #fff0a6 16% 23%, transparent 24%),
+    repeating-conic-gradient(from 0deg, #f4c542 0 9deg, #745a0d 10deg 17deg, #e0aa20 18deg 28deg);
+  box-shadow:
+    inset -8px -7px 12px rgba(52, 38, 1, 0.62),
+    0 0 22px rgba(244, 197, 66, 0.48);
+}
+
+.planet-key-8 .planet-image {
+  background:
+    linear-gradient(135deg, rgba(255,245,255,0.82), transparent 24%),
+    repeating-linear-gradient(112deg, transparent 0 7px, rgba(255,192,246,0.9) 8px 11px, transparent 12px 16px),
+    conic-gradient(from 30deg, #ec6fe7, #7e32b8, #ff9edc, #8a3cd1, #ec6fe7);
+  box-shadow:
+    inset -8px -7px 12px rgba(54, 5, 61, 0.58),
+    0 0 22px rgba(236, 111, 231, 0.52);
 }
 
 .wormhole-planet-key .planet-image {
