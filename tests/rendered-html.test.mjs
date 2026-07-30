@@ -193,15 +193,13 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.doesNotMatch(pageSource, /wormhole-planet-key/);
   assert.match(pageSource, /className="wormhole-entry"/);
   assert.match(pageSource, /avatarPixels=\{avatarPixels\}/);
-  assert.match(pageSource, /lazy\(\(\) =>/);
-  assert.match(pageSource, /import\("\.\/wormhole-mode"\)/);
   assert.match(wormholeSource, /Array\.from\(\{ length: 30 \}/);
   assert.match(wormholeSource, /stage\.id >= 16 && !solution\.features\.has\("portal"\)/);
   assert.match(wormholeSource, /stage\.id >= 21 && !solution\.features\.has\("toggle"\)/);
   assert.match(wormholeModeSource, /실험 버전 · 30 MAPS/);
   assert.match(wormholeModeSource, /육각 성운 헥사리움/);
   assert.match(wormholeModeSource, /330 \/ moveSpeed/);
-  assert.match(wormholeModeSource, /7 EXPERIMENTS · 210 MAPS/);
+  assert.match(wormholeModeSource, /3 EXPERIMENTS · 90 MAPS/);
   assert.match(wormholeModeSource, /쌍성계 제미니아/);
   assert.match(wormholeModeSource, /radial-player-pixel/);
   assert.match(wormholeModeSource, /className="radial-up"/);
@@ -214,8 +212,8 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.match(wormholeModeSource, /aria-label=\{`\$\{item\.id\}번, 별 \$\{stars\}개`\}/);
   assert.match(wormholeModeSource, /wormhole-mode speed-\$\{String\(moveSpeed\)/);
   assert.match(wormholeModeSource, /\$\{screen === "select" \? "is-selecting" : "is-playing"\}/);
-  assert.match(globalCssSource, /\.wormhole-mode\.is-playing\s*\{[^}]*overflow:\s*hidden/s);
-  assert.match(globalCssSource, /\.site-shell\.screen-playing[\s\S]*?height:\s*100svh/);
+  assert.match(globalCssSource, /\.wormhole-mode\.is-playing\s*\{[^}]*overflow-y:\s*auto/s);
+  assert.doesNotMatch(globalCssSource, /\.wormhole-mode\.is-playing\s*\{[^}]*overflow:\s*hidden/s);
   assert.match(wormholeModeSource, /stored\.slice\(0, WORMHOLE_STAGES\.length\)/);
   assert.match(hexSource, /Array\.from\(\{ length: 30 \}/);
   assert.match(hexSource, /stage\.id >= 21 && !solution\.features\.has\("portal"\)/);
@@ -237,103 +235,10 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.match(twinSource, /stage\.par < 15 \|\| stage\.par > 25/);
   assert.match(twinSource, /gimmick: "resonance-gate" \| null/);
   assert.match(twinSource, /!state\.gateOpen \|\| !state\.gateCrossed/);
-  assert.match(twinModeSource, /공명 게이트 열림/);
-  assert.doesNotMatch(twinModeSource, /wormhole-stage-legend/);
+  assert.match(twinModeSource, /공명 스위치 · 반대 행성 게이트 개방/);
+  assert.match(twinModeSource, /21–30 15~25 MOVE · 공명 게이트/);
   assert.match(twinModeSource, /initialTwinState/);
   assert.match(twinModeSource, /ARRIVE/);
   assert.match(globalCssSource, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(globalCssSource, /\.twin-gimmick-state/);
-});
-
-test("keeps four fixed-block 30-map wormhole worlds after removing gravity core", async () => {
-  const pageSource = await readFile(
-    new URL("../app/page.tsx", import.meta.url),
-    "utf8",
-  );
-  const engineSource = await readFile(
-    new URL("../app/exotic-engine.ts", import.meta.url),
-    "utf8",
-  );
-  const sharedEngineSource = await readFile(
-    new URL("../app/game-engine.ts", import.meta.url),
-    "utf8",
-  );
-  const modeSource = await readFile(
-    new URL("../app/exotic-mode.tsx", import.meta.url),
-    "utf8",
-  );
-  const hubSource = await readFile(
-    new URL("../app/wormhole-mode.tsx", import.meta.url),
-    "utf8",
-  );
-  const cssSource = await readFile(
-    new URL("../app/globals.css", import.meta.url),
-    "utf8",
-  );
-
-  for (const world of [
-    "overlay_dimension",
-    "echo_galaxy",
-    "eclipse_planet",
-    "mobius_corridor",
-  ]) {
-    assert.match(engineSource, new RegExp(`"${world}"`));
-  }
-  for (const name of ["중첩차원", "잔상은하", "일식행성", "뫼비우스 회랑"]) {
-    assert.match(engineSource, new RegExp(name));
-  }
-  assert.doesNotMatch(engineSource, /gravity_core|중력핵|gravityBlocks|settleGravityLine/);
-
-  assert.match(engineSource, /Array\.from\(\{ length: 30 \}/);
-  assert.match(engineSource, /solveExoticStage/);
-  assert.match(engineSource, /PRESET_ATTEMPTS/);
-  assert.match(engineSource, /PRESET_PARS/);
-  assert.match(engineSource, /stage\.par = PRESET_PARS/);
-  assert.doesNotMatch(engineSource, /Object\.values\(EXOTIC_STAGES\).*forEach/s);
-  assert.match(engineSource, /import\s*\{[\s\S]*?\bslide\b[\s\S]*?\}\s*from "\.\/game-engine"/);
-  assert.match(engineSource, /export function sharedStraightSlide/);
-  assert.match(engineSource, /const plan = slide\(/);
-  assert.doesNotMatch(engineSource, /function slideOne|function nextMobiusCell|const VECTOR/);
-  assert.match(sharedEngineSource, /export type StraightTopology/);
-  assert.match(sharedEngineSource, /horizontal: "death" \| "wall" \| "mobius"/);
-  assert.match(sharedEngineSource, /const path: Cell\[\] = \[\]/);
-  assert.match(sharedEngineSource, /wraps\.push\(\{ from: previousCell, to: \{ \.\.\.current \} \}\)/);
-  assert.match(engineSource, /state\.previous/);
-  assert.match(engineSource, /dead:\s*true/);
-  assert.match(engineSource, /state\.phase === 0 \? 1 : 0/);
-  assert.match(engineSource, /state\.dimension === 0 \? 1 : 0/);
-  assert.match(engineSource, /dayWalls:\s*GridCell\[\]/);
-  assert.match(engineSource, /nightWalls:\s*GridCell\[\]/);
-  assert.match(engineSource, /goalDimension:\s*0 \| 1 \| null/);
-  assert.match(engineSource, /goalPhase:\s*0 \| 1 \| null/);
-  assert.match(engineSource, /horizontal: isMobius \? "mobius" : "death"/);
-  assert.match(engineSource, /state\.usedCoreRule = true/);
-
-  assert.doesNotMatch(modeSource, /계산 최소 조작|최단 입력|탐색 상태|>검증</);
-  assert.doesNotMatch(cssSource, /\.exotic-debug/);
-  assert.match(modeSource, /item\.id === 10 \|\| item\.id === 20 \|\| item\.id === 30/);
-  assert.match(modeSource, /straight-line-\$\{worldId\}-bests-v2/);
-  assert.match(modeSource, /EXOTIC_CELL_MS = 64/);
-  assert.match(modeSource, /result\.playerPath\.length/);
-  assert.match(modeSource, /setVisualState/);
-  assert.match(modeSource, /뫼비우스 가장자리 통과/);
-  assert.match(modeSource, /disabled=\{moving \|\| isDead\}/);
-  assert.match(hubSource, /7 EXPERIMENTS · 210 MAPS/);
-  assert.match(hubSource, /EXOTIC_WORLDS\.map/);
-  assert.doesNotMatch(hubSource, /wormhole-stage-legend/);
-  assert.doesNotMatch(modeSource, /wormhole-stage-legend|단계 구성/);
-  assert.match(cssSource, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(cssSource, /\.exotic-stage-grid button\.is-exotic-boss/);
-  assert.match(cssSource, /\.exotic-tile\s*\{[\s\S]*?border:\s*1px solid transparent[\s\S]*?background:\s*transparent/s);
-  assert.match(cssSource, /\.lab-campaign-card\s*\{[\s\S]*?overflow:\s*hidden/s);
-  assert.match(cssSource, /\.screen-playing \.chapter-status\s*\{[^}]*display:\s*none/s);
-  assert.match(cssSource, /\.exotic-mode\.is-playing\s*\{[^}]*overflow:\s*hidden/s);
-  assert.match(cssSource, /\.world-overlay_dimension\.dimension-1\.exotic-board/);
-  assert.match(cssSource, /\.world-eclipse_planet \.exotic-tile\.is-day-wall/);
-  assert.match(cssSource, /\.world-eclipse_planet \.exotic-tile\.is-night-wall/);
-  assert.match(cssSource, /\.mobius-edge-mark/);
-  assert.match(cssSource, /\.exotic-tile\.is-player-trail::after/);
-  assert.doesNotMatch(cssSource, /is-gravity-block|world-gravity_core/);
-  assert.match(pageSource, /<strong>웜홀 통과 중<\/strong>/);
-  assert.doesNotMatch(pageSource, /웜홀 연결 중/);
 });

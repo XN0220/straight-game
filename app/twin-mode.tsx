@@ -437,6 +437,13 @@ export function TwinMode({
               </p>
             </div>
           </div>
+          <div className="wormhole-stage-legend" aria-label="제미니아 난이도 구성">
+            <span>01–05 1~3 MOVE</span>
+            <span>06–10 5~9 MOVE</span>
+            <span>11–15 7~14 MOVE</span>
+            <span>16–20 12~19 MOVE</span>
+            <span>21–30 15~25 MOVE · 공명 게이트</span>
+          </div>
           <div className="wormhole-stage-grid twin-stage-grid" aria-label="제미니아 30단계 선택">
             {TWIN_STAGES.map((item, index) => {
               const stars = starsFor(bests[index], item.par);
@@ -454,12 +461,21 @@ export function TwinMode({
               );
             })}
           </div>
-          <p className="wormhole-total">GEMINIA STAR {totalStars}/90</p>
+          <p className="wormhole-total">GEMINIA STAR {totalStars}/90 · 다른 실험 구역과 별도 저장</p>
         </div>
       ) : (
         <div className="wormhole-play twin-play">
           <div className="wormhole-side twin-side">
             <span className="beta-chip">TWIN MAP {String(stage.id).padStart(2, "0")}</span>
+            <p>
+              {stage.id <= 5
+                ? "큰 블록 · 공유 이동 입문"
+                : stage.id <= 15
+                  ? "비대칭 행성 · 경로 분리"
+                  : stage.id <= 20
+                    ? "고난도 · 두 행성 동시 계산"
+                    : "공명 스위치 · 반대 행성 게이트 개방"}
+            </p>
             <div className="wormhole-score">
               <span>MOVE <strong>{moves}</strong></span>
               <span>PAR <strong>{stage.par}</strong></span>

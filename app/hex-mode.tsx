@@ -255,6 +255,14 @@ export function HexMode({
               </p>
             </div>
           </div>
+          <div className="wormhole-stage-legend" aria-label="헥사리움 난이도 구성">
+            <span>01–05 1~3 MOVE</span>
+            <span>06–10 3~5 MOVE</span>
+            <span>11–15 5~10 MOVE</span>
+            <span>16–20 10~15 MOVE</span>
+            <span>21–25 포탈</span>
+            <span>26–30 포탈 + 위상</span>
+          </div>
           <div className="wormhole-stage-grid hex-stage-grid" aria-label="헥사리움 30단계 선택">
             {HEX_STAGES.map((item, index) => {
               const stars = starsFor(bests[index], item.par);
@@ -272,12 +280,21 @@ export function HexMode({
               );
             })}
           </div>
-          <p className="wormhole-total">HEXA STAR {totalStars}/90</p>
+          <p className="wormhole-total">HEXA STAR {totalStars}/90 · 다른 실험 구역과 별도 저장</p>
         </div>
       ) : (
         <div className="wormhole-play hex-play">
           <div className="wormhole-side">
             <span className="beta-chip">HEXA MAP {String(stage.id).padStart(2, "0")}</span>
+            <p>
+              {stage.id <= 10
+                ? "큰 육각 타일 · 6방향 이동 훈련"
+                : stage.id <= 20
+                  ? "확장 육각 맵 · 다중 경로"
+                  : stage.id <= 25
+                    ? "확장 육각 맵 · 순간이동 포탈"
+                    : "고난도 · 포탈과 위상 스위치"}
+            </p>
             <div className="wormhole-score">
               <span>MOVE <strong>{moves}</strong></span>
               <span>PAR <strong>{stage.par}</strong></span>

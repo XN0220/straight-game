@@ -1,18 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
-import {
-  EXOTIC_WORLDS,
-  type ExoticWorldId,
-} from "./exotic-engine";
-import { ExoticMode, exoticTotalStars } from "./exotic-mode";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { starsFor } from "./game-engine";
 import { HEX_STAGES } from "./hex-engine";
 import { HEX_BEST_KEY, HexMode } from "./hex-mode";
@@ -36,7 +24,7 @@ const RING_SIZE = 31;
 const CENTER = 300;
 
 type ModeScreen = "select" | "playing" | "won";
-type LabCampaign = "hub" | "radial" | "hex" | "twin" | ExoticWorldId;
+type LabCampaign = "hub" | "radial" | "hex" | "twin";
 
 const KEY_DIRECTION: Record<string, RadialDirection | undefined> = {
   ArrowUp: "out",
@@ -132,9 +120,6 @@ export function WormholeMode({
   const [twinBests, setTwinBests] = useState<Array<number | null>>(
     Array(TWIN_STAGES.length).fill(null),
   );
-  const [exoticStars, setExoticStars] = useState<Record<ExoticWorldId, number>>(
-    () => Object.fromEntries(EXOTIC_WORLDS.map((world) => [world.id, 0])) as Record<ExoticWorldId, number>,
-  );
   const timerRef = useRef<number | null>(null);
   const stage = WORMHOLE_STAGES[stageIndex];
 
@@ -165,11 +150,6 @@ export function WormholeMode({
           });
           setTwinBests(restoredTwin);
         }
-        setExoticStars(
-          Object.fromEntries(
-            EXOTIC_WORLDS.map((world) => [world.id, exoticTotalStars(world.id)]),
-          ) as Record<ExoticWorldId, number>,
-        );
       } catch {
         // 손상된 베타 기록은 공식 캠페인과 분리된 기본값으로 대체합니다.
       }
@@ -350,23 +330,6 @@ export function WormholeMode({
     );
   }
 
-  const exoticWorld = EXOTIC_WORLDS.find((world) => world.id === labCampaign);
-  if (exoticWorld) {
-    return (
-      <ExoticMode
-        worldId={exoticWorld.id}
-        avatarPixels={avatarPixels}
-        onClose={() => {
-          setExoticStars((previous) => ({
-            ...previous,
-            [exoticWorld.id]: exoticTotalStars(exoticWorld.id),
-          }));
-          setLabCampaign("hub");
-        }}
-      />
-    );
-  }
-
   if (labCampaign === "hub") {
     return (
       <div
@@ -384,9 +347,9 @@ export function WormholeMode({
         </header>
         <div className="lab-hub-content">
           <div className="lab-hub-heading">
-            <span className="beta-chip">7 EXPERIMENTS · 210 MAPS</span>
+            <span className="beta-chip">3 EXPERIMENTS · 90 MAPS</span>
             <h2>사각형 밖의 직진 규칙</h2>
-            <p>공간과 이동 규칙이 서로 다른 독립 퍼즐 세계입니다. 원하는 세계를 골라 바로 시작하세요.</p>
+            <p>모양과 이동 축이 완전히 다른 실험 스테이지입니다. 구역을 고른 뒤 기존 맵 선택과 같은 방식으로 번호를 선택하세요.</p>
           </div>
           <div className="lab-campaign-grid">
             <button
@@ -440,26 +403,6 @@ export function WormholeMode({
               </span>
               <span className="lab-card-score">★ {totalTwinStars}/90</span>
             </button>
-            {EXOTIC_WORLDS.map((world) => (
-              <button
-                key={world.id}
-                className={`lab-campaign-card exotic-campaign-card world-${world.id}`}
-                style={{ "--lab-accent": world.accent } as CSSProperties}
-                type="button"
-                onClick={() => setLabCampaign(world.id)}
-              >
-                <span className="lab-planet-image exotic-lab-image" aria-hidden="true">
-                  <i>{world.icon}</i>
-                  <b />
-                </span>
-                <span className="lab-card-copy">
-                  <small>{world.english} · 30 MAPS</small>
-                  <strong>{world.name}</strong>
-                  <em>{world.description}</em>
-                </span>
-                <span className="lab-card-score">★ {exoticStars[world.id]}/90</span>
-              </button>
-            ))}
           </div>
         </div>
       </div>
@@ -500,6 +443,12 @@ export function WormholeMode({
               </p>
             </div>
           </div>
+          <div className="wormhole-stage-legend" aria-label="웜홀 난이도 구성">
+            <span>01–10 작은 맵 · 쉬움</span>
+            <span>11–15 확장 맵</span>
+            <span>16–20 포탈</span>
+            <span>21–30 포탈 + 온오프</span>
+          </div>
           <div className="wormhole-stage-grid" aria-label="웜홀 30단계 선택">
             {WORMHOLE_STAGES.map((item, index) => {
               const stars = starsFor(bests[index], item.par);
@@ -519,12 +468,13 @@ export function WormholeMode({
               );
             })}
           </div>
-          <p className="wormhole-total">BETA STAR {totalStars}/90</p>
+          <p className="wormhole-total">BETA STAR {totalStars}/90 · 공식 캠페인 기록과 별도 저장</p>
         </div>
       ) : (
         <div className="wormhole-play">
           <div className="wormhole-side">
             <span className="beta-chip">BETA MAP {String(stage.id).padStart(2, "0")}</span>
+            <p>{stage.subtitle}</p>
             <div className="wormhole-score">
               <span>MOVE <strong>{moves}</strong></span>
               <span>PAR <strong>{stage.par}</strong></span>
