@@ -53,7 +53,6 @@ function cloneRunState(state: ExoticRunState): ExoticRunState {
     ...state,
     player: { ...state.player },
     echo: state.echo ? { ...state.echo } : null,
-    blocks: state.blocks.map((cell) => ({ ...cell })),
   };
 }
 
@@ -92,16 +91,6 @@ function activeWalls(stage: ExoticStage, state: ExoticRunState) {
   return walls;
 }
 
-function stageSubtitle(stage: ExoticStage) {
-  if (stage.id <= 5) return "고유 규칙 소개 · 작은 맵";
-  if (stage.id <= 10) return stage.id === 10 ? "첫 번째 보스 · 기초 종합" : "고유 규칙 기초 응용";
-  if (stage.id <= 15) return "중간 크기 맵 적응 · 열쇠와 문";
-  if (stage.id <= 20) return stage.id === 20 ? "두 번째 보스 · 순서와 재방문" : "상태 조합과 이동 순서";
-  if (stage.id <= 25) return "고급 우회와 상태 재활용";
-  if (stage.id < 30) return "최종 도전 · 판단 밀도 강화";
-  return "최종 보스 · 세 구역 종합";
-}
-
 function statusText(stage: ExoticStage, state: ExoticRunState) {
   switch (stage.worldId) {
     case "overlay_dimension":
@@ -110,8 +99,6 @@ function statusText(stage: ExoticStage, state: ExoticRunState) {
       return `직전 입력 · ${state.previous ? DIRECTION_LABEL[state.previous] : "대기"}`;
     case "eclipse_planet":
       return `${state.phase === 0 ? "☀ 낮" : "☾ 밤"} · 다음 이동 후 ${state.phase === 0 ? "밤" : "낮"}`;
-    case "gravity_core":
-      return `이동 블록 ${state.blocks.length}개 · 동시 이동`;
     case "mobius_corridor":
       return stage.verticalWrap ? "좌우·상하 반전 연결" : "좌우 세로 반전 연결";
   }
@@ -181,7 +168,6 @@ function Board({
   const baseWallKeys = new Set(stage.walls.map(gridCellKey));
   const phaseWallKeys = new Set(stage.phaseWalls.map(gridCellKey));
   const shiftKeys = new Set(stage.shiftCells.map(gridCellKey));
-  const blockKeys = new Set(state.blocks.map(gridCellKey));
   const cells = Array.from({ length: stage.cols * stage.rows }, (_, index) => ({
     col: index % stage.cols,
     row: Math.floor(index / stage.cols),
@@ -207,7 +193,6 @@ function Board({
           walls.has(key) ? "is-wall" : "",
           phaseWallKeys.has(key) && !baseWallKeys.has(key) ? "is-phase-wall" : "",
           shiftKeys.has(key) ? "is-shift" : "",
-          blockKeys.has(key) ? "is-gravity-block" : "",
           sameCell(stage.keyCell, cell) && !state.hasKey ? "is-key" : "",
           sameCell(stage.goal, cell) ? "is-goal" : "",
           sameCell(stage.goal, cell) && stage.keyCell !== null && !state.hasKey ? "is-locked" : "",
@@ -219,7 +204,6 @@ function Board({
             {sameCell(stage.goal, cell) && <b>{state.hasKey || !stage.keyCell ? "◎" : "▥"}</b>}
             {sameCell(stage.echoGoal, cell) && <b>◇</b>}
             {shiftKeys.has(key) && <b>⇄</b>}
-            {blockKeys.has(key) && <b>■</b>}
           </span>
         );
       })}
@@ -269,6 +253,7 @@ export function ExoticMode({
   const [state, setState] = useState<ExoticRunState>(() => initialExoticState(stages[0]));
   const [moves, setMoves] = useState(0);
   const [moving, setMoving] = useState(false);
+  const [isDead, setIsDead] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHelp, setShowHelp] = useState(false);
   const [bests, setBests] = useState<Array<number | null>>(
@@ -305,6 +290,7 @@ export function ExoticMode({
       setState(initialExoticState(stages[index]));
       setMoves(0);
       setMoving(false);
+      setIsDead(false);
       setHistory([]);
       setShowHelp(stages[index].id === 1);
       setScreen("playing");
@@ -325,9 +311,21 @@ export function ExoticMode({
 
   const act = useCallback(
     (action: ExoticAction) => {
-      if (moving || screen !== "playing") return;
+      if (moving || isDead || screen !== "playing") return;
       const result = exoticStep(stage, state, action);
       if (!result.changed) return;
+      if (result.dead) {
+        setMoving(true);
+        setIsDead(true);
+        timerRef.current = window.setTimeout(() => {
+          setState(initialExoticState(stage));
+          setMoves(0);
+          setHistory([]);
+          setMoving(false);
+          setIsDead(false);
+        }, 420);
+        return;
+      }
       const resultMoves = moves + 1;
       setHistory((previous) => [
         ...previous,
@@ -350,7 +348,7 @@ export function ExoticMode({
         setScreen("won");
       }, 190);
     },
-    [moves, moving, screen, stage, stageIndex, state, worldId],
+    [isDead, moves, moving, screen, stage, stageIndex, state, worldId],
   );
 
   useEffect(() => {
@@ -420,12 +418,6 @@ export function ExoticMode({
               <p>{world.description}</p>
             </div>
           </section>
-          <div className="wormhole-stage-legend">
-            <span>01–05 규칙 소개</span>
-            <span>06–10 기초 응용</span>
-            <span>11–20 상태 조합</span>
-            <span>21–30 고급 퍼즐</span>
-          </div>
           <div className="wormhole-stage-grid exotic-stage-grid" aria-label={`${world.name} 30단계 선택`}>
             {stages.map((item, index) => {
               const stars = starsFor(bests[index], item.par);
@@ -444,22 +436,20 @@ export function ExoticMode({
               );
             })}
           </div>
-          <p className="wormhole-total">WORLD STAR {totalStars}/90 · 세계 ID별 독립 저장</p>
+          <p className="wormhole-total">WORLD STAR {totalStars}/90</p>
         </main>
       ) : (
-        <main className="exotic-play">
+        <main className={`exotic-play ${isDead ? "is-dead" : ""}`}>
           <section className="exotic-side">
             <div className="exotic-stage-title">
               <span className="beta-chip">
                 MAP {String(stage.id).padStart(2, "0")}
                 {(stage.id === 10 || stage.id === 20 || stage.id === 30) && " · BOSS"}
               </span>
-              <strong>{stageSubtitle(stage)}</strong>
             </div>
             <div className="wormhole-score">
               <span>MOVE <strong>{moves}</strong></span>
               <span>PAR <strong>{stage.par}</strong></span>
-              <span>STAR <strong>{starsFor(bests[stageIndex], stage.par)}</strong></span>
             </div>
             <div className="exotic-status">
               <span>{currentStatus}</span>
@@ -473,14 +463,35 @@ export function ExoticMode({
             )}
             {showHelp && <p className="exotic-help">{world.tutorial}</p>}
             <div className="exotic-tools">
-              <button type="button" disabled={history.length === 0 || moving} onClick={undo}>↶ 되돌리기</button>
-              <button type="button" onClick={() => start(stageIndex)}>↻ 다시 시작</button>
-              <button type="button" onClick={() => setShowHelp((value) => !value)}>?</button>
+              <button
+                type="button"
+                disabled={history.length === 0 || moving}
+                onClick={undo}
+                aria-label="한 수 되돌리기"
+              >
+                <span aria-hidden="true">↶</span><em>되돌리기</em>
+              </button>
+              <button type="button" onClick={() => start(stageIndex)} aria-label="다시 시작">
+                <span aria-hidden="true">↻</span><em>다시 시작</em>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowHelp((value) => !value)}
+                aria-label={showHelp ? "규칙 설명 닫기" : "규칙 설명 보기"}
+              >
+                ?
+              </button>
             </div>
           </section>
 
           <section className={`exotic-board-area ${moving ? "is-moving" : ""}`}>
             <Board stage={stage} state={state} avatarPixels={avatarPixels} />
+            {isDead && (
+              <div className="exotic-death" role="status" aria-live="assertive">
+                <strong>경계 충돌</strong>
+                <span>시작 위치로 돌아갑니다</span>
+              </div>
+            )}
             {stage.worldId === "overlay_dimension" && (
               <button
                 className="dimension-shift-button"

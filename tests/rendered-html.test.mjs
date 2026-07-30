@@ -201,7 +201,7 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.match(wormholeModeSource, /실험 버전 · 30 MAPS/);
   assert.match(wormholeModeSource, /육각 성운 헥사리움/);
   assert.match(wormholeModeSource, /330 \/ moveSpeed/);
-  assert.match(wormholeModeSource, /8 EXPERIMENTS · 240 MAPS/);
+  assert.match(wormholeModeSource, /7 EXPERIMENTS · 210 MAPS/);
   assert.match(wormholeModeSource, /쌍성계 제미니아/);
   assert.match(wormholeModeSource, /radial-player-pixel/);
   assert.match(wormholeModeSource, /className="radial-up"/);
@@ -237,15 +237,15 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.match(twinSource, /stage\.par < 15 \|\| stage\.par > 25/);
   assert.match(twinSource, /gimmick: "resonance-gate" \| null/);
   assert.match(twinSource, /!state\.gateOpen \|\| !state\.gateCrossed/);
-  assert.match(twinModeSource, /공명 스위치 · 반대 행성 게이트 개방/);
-  assert.match(twinModeSource, /21–30 15~25 MOVE · 공명 게이트/);
+  assert.match(twinModeSource, /공명 게이트 열림/);
+  assert.doesNotMatch(twinModeSource, /wormhole-stage-legend/);
   assert.match(twinModeSource, /initialTwinState/);
   assert.match(twinModeSource, /ARRIVE/);
   assert.match(globalCssSource, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(globalCssSource, /\.twin-gimmick-state/);
 });
 
-test("adds five independently verified 30-map wormhole worlds without replacing existing worlds", async () => {
+test("keeps four fixed-block 30-map wormhole worlds after removing gravity core", async () => {
   const engineSource = await readFile(
     new URL("../app/exotic-engine.ts", import.meta.url),
     "utf8",
@@ -267,14 +267,14 @@ test("adds five independently verified 30-map wormhole worlds without replacing 
     "overlay_dimension",
     "echo_galaxy",
     "eclipse_planet",
-    "gravity_core",
     "mobius_corridor",
   ]) {
     assert.match(engineSource, new RegExp(`"${world}"`));
   }
-  for (const name of ["중첩차원", "잔상은하", "일식행성", "중력핵 행성", "뫼비우스 회랑"]) {
+  for (const name of ["중첩차원", "잔상은하", "일식행성", "뫼비우스 회랑"]) {
     assert.match(engineSource, new RegExp(name));
   }
+  assert.doesNotMatch(engineSource, /gravity_core|중력핵|gravityBlocks|settleGravityLine/);
 
   assert.match(engineSource, /Array\.from\(\{ length: 30 \}/);
   assert.match(engineSource, /solveExoticStage/);
@@ -283,7 +283,8 @@ test("adds five independently verified 30-map wormhole worlds without replacing 
   assert.match(engineSource, /stage\.par = PRESET_PARS/);
   assert.doesNotMatch(engineSource, /Object\.values\(EXOTIC_STAGES\).*forEach/s);
   assert.match(engineSource, /state\.previous/);
-  assert.match(engineSource, /settleGravityLine/);
+  assert.match(engineSource, /dead:\s*true/);
+  assert.match(engineSource, /!inside\(stage, candidate\.next\)/);
   assert.match(engineSource, /next\.row = stage\.rows - 1 - cell\.row/);
   assert.match(engineSource, /state\.phase === 0 \? 1 : 0/);
   assert.match(engineSource, /state\.dimension === 0 \? 1 : 0/);
@@ -292,8 +293,15 @@ test("adds five independently verified 30-map wormhole worlds without replacing 
   assert.doesNotMatch(cssSource, /\.exotic-debug/);
   assert.match(modeSource, /item\.id === 10 \|\| item\.id === 20 \|\| item\.id === 30/);
   assert.match(modeSource, /straight-line-\$\{worldId\}-bests-v1/);
-  assert.match(hubSource, /8 EXPERIMENTS · 240 MAPS/);
+  assert.match(hubSource, /7 EXPERIMENTS · 210 MAPS/);
   assert.match(hubSource, /EXOTIC_WORLDS\.map/);
+  assert.doesNotMatch(hubSource, /wormhole-stage-legend/);
+  assert.doesNotMatch(modeSource, /wormhole-stage-legend|단계 구성/);
   assert.match(cssSource, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(cssSource, /\.exotic-stage-grid button\.is-exotic-boss/);
+  assert.match(cssSource, /\.exotic-tile\s*\{[\s\S]*?border:\s*1px solid transparent[\s\S]*?background:\s*transparent/s);
+  assert.match(cssSource, /\.lab-campaign-card\s*\{[\s\S]*?overflow:\s*hidden/s);
+  assert.match(cssSource, /\.screen-playing \.chapter-status\s*\{[^}]*display:\s*none/s);
+  assert.match(cssSource, /\.exotic-mode\.is-playing\s*\{[^}]*overflow:\s*hidden/s);
+  assert.doesNotMatch(cssSource, /is-gravity-block|world-gravity_core/);
 });

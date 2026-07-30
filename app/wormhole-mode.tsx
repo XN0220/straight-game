@@ -384,9 +384,9 @@ export function WormholeMode({
         </header>
         <div className="lab-hub-content">
           <div className="lab-hub-heading">
-            <span className="beta-chip">8 EXPERIMENTS · 240 MAPS</span>
+            <span className="beta-chip">7 EXPERIMENTS · 210 MAPS</span>
             <h2>사각형 밖의 직진 규칙</h2>
-            <p>공간과 이동 규칙이 서로 다른 독립 퍼즐 세계입니다. 각 세계의 초반에서 규칙을 익힌 뒤 10·20·30단계 보스에 도전하세요.</p>
+            <p>공간과 이동 규칙이 서로 다른 독립 퍼즐 세계입니다. 원하는 세계를 골라 바로 시작하세요.</p>
           </div>
           <div className="lab-campaign-grid">
             <button
@@ -500,12 +500,6 @@ export function WormholeMode({
               </p>
             </div>
           </div>
-          <div className="wormhole-stage-legend" aria-label="웜홀 난이도 구성">
-            <span>01–10 작은 맵 · 쉬움</span>
-            <span>11–15 확장 맵</span>
-            <span>16–20 포탈</span>
-            <span>21–30 포탈 + 온오프</span>
-          </div>
           <div className="wormhole-stage-grid" aria-label="웜홀 30단계 선택">
             {WORMHOLE_STAGES.map((item, index) => {
               const stars = starsFor(bests[index], item.par);
@@ -525,13 +519,12 @@ export function WormholeMode({
               );
             })}
           </div>
-          <p className="wormhole-total">BETA STAR {totalStars}/90 · 공식 캠페인 기록과 별도 저장</p>
+          <p className="wormhole-total">BETA STAR {totalStars}/90</p>
         </div>
       ) : (
         <div className="wormhole-play">
           <div className="wormhole-side">
             <span className="beta-chip">BETA MAP {String(stage.id).padStart(2, "0")}</span>
-            <p>{stage.subtitle}</p>
             <div className="wormhole-score">
               <span>MOVE <strong>{moves}</strong></span>
               <span>PAR <strong>{stage.par}</strong></span>
