@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
@@ -31,7 +33,10 @@ import {
   type RunState,
 } from "./game-engine";
 import { SpeedControl, type MoveSpeed } from "./speed-control";
-import { WormholeMode } from "./wormhole-mode";
+
+const WormholeMode = lazy(() =>
+  import("./wormhole-mode").then((module) => ({ default: module.WormholeMode })),
+);
 
 type Screen = "menu" | "playing" | "won";
 type Pixel = string | null;
@@ -1627,7 +1632,7 @@ export default function Home() {
   return (
     <main
       className={
-        "site-shell planet-" +
+        `site-shell ${wormholeOpen ? "screen-wormhole" : `screen-${screen}`} planet-` +
         (screen === "menu" ? selectedPlanet + 1 : currentLevel.planet + 1)
       }
     >
@@ -1962,10 +1967,19 @@ export default function Home() {
           )}
 
           {wormholeOpen && (
-            <WormholeMode
-              avatarPixels={avatarPixels}
-              onClose={() => setWormholeOpen(false)}
-            />
+            <Suspense
+              fallback={
+                <div className="wormhole-loading" role="status" aria-live="polite">
+                  <span />
+                  <strong>웜홀 연결 중…</strong>
+                </div>
+              }
+            >
+              <WormholeMode
+                avatarPixels={avatarPixels}
+                onClose={() => setWormholeOpen(false)}
+              />
+            </Suspense>
           )}
 
           {isDead && (
