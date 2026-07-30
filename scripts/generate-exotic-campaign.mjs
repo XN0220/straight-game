@@ -1,6 +1,9 @@
 import {
   EXOTIC_WORLDS,
+  exoticStep,
   exoticStageBand,
+  gridCellKey,
+  initialExoticState,
   makeExoticCandidate,
   solveExoticStage,
 } from "../app/exotic-engine.ts";
@@ -19,6 +22,21 @@ function hasEnoughCurriculumDepth(worldId, id, path) {
   if (id <= 10) return shifts >= 1;
   if (id <= 20) return shifts >= 2;
   return shifts >= 3;
+}
+
+function hasSafeEclipseTransitions(stage, path) {
+  if (stage.worldId !== "eclipse_planet") return true;
+  let state = initialExoticState(stage);
+  for (const action of path) {
+    const step = exoticStep(stage, state, action);
+    state = step.state;
+    if (!step.phaseChanged) continue;
+    const activeWalls = state.phase === 0 ? stage.dayWalls : stage.nightWalls;
+    if (activeWalls.some((cell) => gridCellKey(cell) === gridCellKey(state.player))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 const attemptsByWorld = {};
@@ -41,6 +59,7 @@ for (const world of EXOTIC_WORLDS.filter(
       if (solution.path.length < band.min || solution.path.length > band.max) continue;
       if (!solution.usesCoreRule) continue;
       if (!hasEnoughCurriculumDepth(world.id, id, solution.path)) continue;
+      if (!hasSafeEclipseTransitions(stage, solution.path)) continue;
       found = { attempt, par: solution.path.length, explored: solution.exploredStates };
       break;
     }
