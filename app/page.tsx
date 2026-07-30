@@ -1971,7 +1971,7 @@ export default function Home() {
               fallback={
                 <div className="wormhole-loading" role="status" aria-live="polite">
                   <span />
-                  <strong>웜홀 연결 중…</strong>
+                  <strong>웜홀 통과 중</strong>
                 </div>
               }
             >
