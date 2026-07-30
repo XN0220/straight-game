@@ -271,7 +271,6 @@ export function ExoticMode({
   const [moving, setMoving] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHelp, setShowHelp] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
   const [bests, setBests] = useState<Array<number | null>>(
     Array(stages.length).fill(null),
   );
@@ -308,7 +307,6 @@ export function ExoticMode({
       setMoving(false);
       setHistory([]);
       setShowHelp(stages[index].id === 1);
-      setShowDebug(false);
       setScreen("playing");
     },
     [stages],
@@ -474,21 +472,10 @@ export function ExoticMode({
               </div>
             )}
             {showHelp && <p className="exotic-help">{world.tutorial}</p>}
-            {showDebug && (
-              <div className="exotic-debug">
-                <span>계산 최소 조작 {stage.par}</span>
-                <span>최단 입력 {stage.solution.map((item) => item === "shift" ? "⇄" : DIRECTION_LABEL[item]).join(" ")}</span>
-                <span>탐색 상태 {stage.exploredStates.toLocaleString()}개</span>
-                <span>클리어 가능 · 고유 규칙 필수</span>
-                <span>보조 기믹 {stage.auxiliaryMechanics.length}종류</span>
-                <span>의도하지 않은 시간·무작위 상태 없음</span>
-              </div>
-            )}
             <div className="exotic-tools">
               <button type="button" disabled={history.length === 0 || moving} onClick={undo}>↶ 되돌리기</button>
               <button type="button" onClick={() => start(stageIndex)}>↻ 다시 시작</button>
               <button type="button" onClick={() => setShowHelp((value) => !value)}>?</button>
-              <button type="button" onClick={() => setShowDebug((value) => !value)}>검증</button>
             </div>
           </section>
 

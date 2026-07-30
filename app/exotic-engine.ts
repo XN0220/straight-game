@@ -37,11 +37,7 @@ export type ExoticStage = {
   startPhase: 0 | 1;
   verticalWrap: boolean;
   par: number;
-  solution: ExoticAction[];
-  exploredStates: number;
-  usesCoreRule: boolean;
   auxiliaryMechanics: Array<"key-door">;
-  generationAttempt: number;
 };
 
 export type ExoticRunState = {
@@ -522,27 +518,7 @@ function makeCandidate(worldId: ExoticWorldId, id: number, attempt: number): Exo
     startPhase: (id % 2) as 0 | 1,
     verticalWrap: worldId === "mobius_corridor" && id >= 16,
     par: 0,
-    solution: [],
-    exploredStates: 0,
-    usesCoreRule: false,
     auxiliaryMechanics: keyCell ? ["key-door"] : [],
-    generationAttempt: attempt,
-  };
-}
-
-function relaxedBand(worldId: ExoticWorldId, id: number) {
-  const band = stageBand(id);
-  const pressure =
-    id >= 21
-      ? 0
-      : worldId === "gravity_core"
-        ? 5
-        : worldId === "echo_galaxy"
-          ? 3
-          : 0;
-  return {
-    min: Math.max(2, band.min - pressure),
-    max: band.max,
   };
 }
 
@@ -569,23 +545,34 @@ const PRESET_ATTEMPTS: Record<ExoticWorldId, number[]> = {
   ],
 };
 
-function generateStage(worldId: ExoticWorldId, id: number): ExoticStage {
-  const target = relaxedBand(worldId, id);
-  const attempt = PRESET_ATTEMPTS[worldId][id - 1];
-  const stage = makeCandidate(worldId, id, attempt);
-  const solution = solveExoticStage(stage, target.max);
-  if (
-    !solution ||
-    solution.path.length < target.min ||
-    solution.path.length > target.max ||
-    !solution.usesCoreRule
-  ) {
-    throw new Error(`${worldId} ${id}단계 고정 시드 검증에 실패했습니다.`);
-  }
-  stage.par = solution.path.length;
-  stage.solution = solution.path;
-  stage.exploredStates = solution.exploredStates;
-  stage.usesCoreRule = solution.usesCoreRule;
+// 맵 제작 시 solveExoticStage로 검증해 고정한 최단 조작 수입니다.
+// 플레이 요청마다 150개 맵을 재탐색하지 않아 서버 실행 제한을 피합니다.
+const PRESET_PARS: Record<ExoticWorldId, number[]> = {
+  overlay_dimension: [
+    4, 4, 3, 4, 3, 7, 6, 6, 5, 6, 7, 7, 7, 7, 9, 11, 12, 10, 15, 10, 14, 14, 15, 13, 14,
+    25, 19, 17, 16, 18,
+  ],
+  echo_galaxy: [
+    3, 3, 2, 3, 3, 3, 7, 5, 4, 2, 9, 6, 5, 10, 7, 9, 10, 8, 9, 9, 13, 13, 13, 14, 16, 16,
+    20, 17, 16, 18,
+  ],
+  eclipse_planet: [
+    2, 2, 2, 2, 2, 5, 6, 5, 5, 5, 8, 10, 7, 8, 8, 10, 10, 13, 13, 11, 13, 15, 17, 13, 14,
+    16, 17, 17, 17, 20,
+  ],
+  gravity_core: [
+    2, 2, 2, 5, 3, 2, 6, 5, 4, 7, 6, 5, 10, 6, 3, 17, 15, 9, 16, 8, 15, 13, 15, 14, 13,
+    16, 22, 24, 17, 24,
+  ],
+  mobius_corridor: [
+    2, 2, 4, 2, 3, 5, 6, 5, 5, 5, 8, 9, 7, 10, 10, 10, 10, 10, 11, 10, 13, 13, 13, 13, 13,
+    17, 16, 17, 16, 18,
+  ],
+};
+
+function loadStage(worldId: ExoticWorldId, id: number): ExoticStage {
+  const stage = makeCandidate(worldId, id, PRESET_ATTEMPTS[worldId][id - 1]);
+  stage.par = PRESET_PARS[worldId][id - 1];
   return stage;
 }
 
@@ -593,16 +580,6 @@ export const EXOTIC_STAGES: Record<ExoticWorldId, ExoticStage[]> =
   Object.fromEntries(
     EXOTIC_WORLDS.map((world) => [
       world.id,
-      Array.from({ length: 30 }, (_, index) => generateStage(world.id, index + 1)),
+      Array.from({ length: 30 }, (_, index) => loadStage(world.id, index + 1)),
     ]),
   ) as Record<ExoticWorldId, ExoticStage[]>;
-
-Object.values(EXOTIC_STAGES).flat().forEach((stage) => {
-  const verified = solveExoticStage(stage, stage.par);
-  if (!verified || verified.path.length !== stage.par || !verified.usesCoreRule) {
-    throw new Error(`${stage.worldId} ${stage.id}단계 자동 검증에 실패했습니다.`);
-  }
-  if (stage.auxiliaryMechanics.length > 2) {
-    throw new Error(`${stage.worldId} ${stage.id}단계 보조 기믹 종류 수가 2를 초과했습니다.`);
-  }
-});

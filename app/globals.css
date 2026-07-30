@@ -235,8 +235,7 @@
   background: var(--exotic-accent);
 }
 
-.exotic-help,
-.exotic-debug {
+.exotic-help {
   margin: 8px 0;
   padding: 9px 10px;
   border: 1px solid color-mix(in srgb, var(--exotic-accent) 30%, transparent);
@@ -246,17 +245,9 @@
   line-height: 1.55;
 }
 
-.exotic-debug {
-  display: grid;
-  gap: 4px;
-  max-height: 142px;
-  overflow: auto;
-  font: 800 8px/1.4 "Courier New", monospace;
-}
-
 .exotic-tools {
   display: grid;
-  grid-template-columns: 1fr 1fr 38px 48px;
+  grid-template-columns: 1fr 1fr 38px;
   gap: 5px;
 }
 
@@ -517,7 +508,6 @@
   .exotic-status,
   .overlay-preview,
   .exotic-help,
-  .exotic-debug,
   .exotic-tools {
     grid-column: 1 / 3;
   }

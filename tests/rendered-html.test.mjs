@@ -277,17 +277,17 @@ test("adds five independently verified 30-map wormhole worlds without replacing 
   assert.match(engineSource, /Array\.from\(\{ length: 30 \}/);
   assert.match(engineSource, /solveExoticStage/);
   assert.match(engineSource, /PRESET_ATTEMPTS/);
-  assert.match(engineSource, /stage\.auxiliaryMechanics\.length > 2/);
-  assert.match(engineSource, /!verified\.usesCoreRule/);
+  assert.match(engineSource, /PRESET_PARS/);
+  assert.match(engineSource, /stage\.par = PRESET_PARS/);
+  assert.doesNotMatch(engineSource, /Object\.values\(EXOTIC_STAGES\).*forEach/s);
   assert.match(engineSource, /state\.previous/);
   assert.match(engineSource, /settleGravityLine/);
   assert.match(engineSource, /next\.row = stage\.rows - 1 - cell\.row/);
   assert.match(engineSource, /state\.phase === 0 \? 1 : 0/);
   assert.match(engineSource, /state\.dimension === 0 \? 1 : 0/);
 
-  assert.match(modeSource, /계산 최소 조작/);
-  assert.match(modeSource, /탐색 상태/);
-  assert.match(modeSource, /보조 기믹 \{stage\.auxiliaryMechanics\.length\}종류/);
+  assert.doesNotMatch(modeSource, /계산 최소 조작|최단 입력|탐색 상태|>검증</);
+  assert.doesNotMatch(cssSource, /\.exotic-debug/);
   assert.match(modeSource, /item\.id === 10 \|\| item\.id === 20 \|\| item\.id === 30/);
   assert.match(modeSource, /straight-line-\$\{worldId\}-bests-v1/);
   assert.match(hubSource, /8 EXPERIMENTS · 240 MAPS/);
