@@ -193,6 +193,8 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.doesNotMatch(pageSource, /wormhole-planet-key/);
   assert.match(pageSource, /className="wormhole-entry"/);
   assert.match(pageSource, /avatarPixels=\{avatarPixels\}/);
+  assert.match(pageSource, /lazy\(\(\) =>/);
+  assert.match(pageSource, /import\("\.\/wormhole-mode"\)/);
   assert.match(wormholeSource, /Array\.from\(\{ length: 30 \}/);
   assert.match(wormholeSource, /stage\.id >= 16 && !solution\.features\.has\("portal"\)/);
   assert.match(wormholeSource, /stage\.id >= 21 && !solution\.features\.has\("toggle"\)/);
@@ -212,8 +214,8 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.match(wormholeModeSource, /aria-label=\{`\$\{item\.id\}번, 별 \$\{stars\}개`\}/);
   assert.match(wormholeModeSource, /wormhole-mode speed-\$\{String\(moveSpeed\)/);
   assert.match(wormholeModeSource, /\$\{screen === "select" \? "is-selecting" : "is-playing"\}/);
-  assert.match(globalCssSource, /\.wormhole-mode\.is-playing\s*\{[^}]*overflow-y:\s*auto/s);
-  assert.doesNotMatch(globalCssSource, /\.wormhole-mode\.is-playing\s*\{[^}]*overflow:\s*hidden/s);
+  assert.match(globalCssSource, /\.wormhole-mode\.is-playing\s*\{[^}]*overflow:\s*hidden/s);
+  assert.match(globalCssSource, /\.site-shell\.screen-playing[\s\S]*?height:\s*100svh/);
   assert.match(wormholeModeSource, /stored\.slice\(0, WORMHOLE_STAGES\.length\)/);
   assert.match(hexSource, /Array\.from\(\{ length: 30 \}/);
   assert.match(hexSource, /stage\.id >= 21 && !solution\.features\.has\("portal"\)/);
