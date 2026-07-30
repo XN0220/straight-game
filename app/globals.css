@@ -1975,6 +1975,19 @@ button:focus-visible {
     linear-gradient(135deg, #080510 0%, #120921 52%, #05040a 100%);
 }
 
+.wormhole-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.wormhole-loading strong {
+  color: #f4efff;
+  font-size: clamp(1rem, 2.4vw, 1.35rem);
+  letter-spacing: 0.08em;
+}
+
 .lab-hub-content {
   min-height: calc(100% - 68px);
   display: flex;
