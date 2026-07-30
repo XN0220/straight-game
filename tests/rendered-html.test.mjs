@@ -36,16 +36,13 @@ test("renders development preview metadata", async () => {
   assert.match(await renderHome(), developmentPreviewMeta);
 });
 
-test("disables stale development caches without deleting game progress", async () => {
+test("allows hashed game assets to use the browser cache", async () => {
   const html = await renderHome();
-  assert.match(
-    html,
-    /http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/i,
-  );
-  assert.match(html, /http-equiv="Pragma" content="no-cache"/i);
-  assert.match(html, /data-development-cache-reset="straight-game"/);
-  assert.match(html, /navigator\.serviceWorker\.getRegistrations/);
-  assert.match(html, /cache\.delete\(request\)/);
+  assert.doesNotMatch(html, /http-equiv="Cache-Control"/i);
+  assert.doesNotMatch(html, /http-equiv="Pragma"/i);
+  assert.doesNotMatch(html, /data-development-cache-reset="straight-game"/);
+  assert.doesNotMatch(html, /navigator\.serviceWorker\.getRegistrations/);
+  assert.doesNotMatch(html, /cache\.delete\(request\)/);
   assert.doesNotMatch(html, /localStorage\.clear/);
 });
 
@@ -193,6 +190,9 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.doesNotMatch(pageSource, /wormhole-planet-key/);
   assert.match(pageSource, /className="wormhole-entry"/);
   assert.match(pageSource, /avatarPixels=\{avatarPixels\}/);
+  assert.doesNotMatch(pageSource, /import\s+\{\s*WormholeMode\s*\}\s+from\s+"\.\/wormhole-mode"/);
+  assert.match(pageSource, /lazy\(\(\) =>\s*import\("\.\/wormhole-mode"\)/);
+  assert.match(pageSource, /웜홀 통과 중/);
   assert.match(wormholeSource, /Array\.from\(\{ length: 30 \}/);
   assert.match(wormholeSource, /stage\.id >= 16 && !solution\.features\.has\("portal"\)/);
   assert.match(wormholeSource, /stage\.id >= 21 && !solution\.features\.has\("toggle"\)/);
