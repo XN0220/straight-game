@@ -75,12 +75,28 @@ export type Level = {
 };
 
 type SlideFeatures = number;
+export type StraightTopology = {
+  minCol: number;
+  maxCol: number;
+  minRow: number;
+  maxRow: number;
+  horizontal: "death" | "wall" | "mobius";
+  vertical: "death" | "wall" | "mobius";
+};
+
+export type WrapTransition = {
+  from: Cell;
+  to: Cell;
+};
+
 type MovingPlan = {
   destination: Cell;
   state: RunState;
   features: SlideFeatures;
   distance: number;
   waypoints: Cell[];
+  path: Cell[];
+  wraps: WrapTransition[];
 };
 
 export type SlidePlan =
@@ -98,6 +114,8 @@ export type SlidePlan =
       features: SlideFeatures;
       distance: number;
       waypoints: Cell[];
+      path: Cell[];
+      wraps: WrapTransition[];
     };
 
 type RawStage = {
@@ -320,7 +338,7 @@ const FEATURE = {
   phaseGate: 256,
 } as const;
 
-type PlayableLevel = Pick<
+export type StraightSlideLevel = Pick<
   Level,
   | "blocks"
   | "goal"
@@ -333,7 +351,9 @@ type PlayableLevel = Pick<
   | "phaseSwitches"
   | "phaseA"
   | "phaseB"
->;
+> & {
+  topology?: StraightTopology;
+};
 
 export function cellKey(cell: Cell) {
   return cell.col + "," + cell.row;
@@ -379,8 +399,64 @@ function appendEndpoint(waypoints: Cell[], destination: Cell) {
   return next;
 }
 
+function topologyStep(
+  current: Cell,
+  direction: Direction,
+  topology: StraightTopology | undefined,
+) {
+  const vector = DIRECTION_VECTOR[direction];
+  const next = {
+    col: current.col + vector.col,
+    row: current.row + vector.row,
+  };
+
+  if (!topology) {
+    return {
+      next,
+      wrapped: false,
+      blocked: false,
+      outside:
+        next.col < 0 ||
+        next.col >= GRID_COLS ||
+        next.row < 0 ||
+        next.row >= GRID_ROWS,
+    };
+  }
+
+  const outsideHorizontal =
+    next.col < topology.minCol || next.col > topology.maxCol;
+  const outsideVertical =
+    next.row < topology.minRow || next.row > topology.maxRow;
+
+  if (!outsideHorizontal && !outsideVertical) {
+    return { next, wrapped: false, blocked: false, outside: false };
+  }
+
+  if (outsideHorizontal) {
+    if (topology.horizontal === "wall") {
+      return { next, wrapped: false, blocked: true, outside: false };
+    }
+    if (topology.horizontal === "death") {
+      return { next, wrapped: false, blocked: false, outside: true };
+    }
+    next.col = next.col < topology.minCol ? topology.maxCol : topology.minCol;
+    next.row = topology.minRow + topology.maxRow - current.row;
+    return { next, wrapped: true, blocked: false, outside: false };
+  }
+
+  if (topology.vertical === "wall") {
+    return { next, wrapped: false, blocked: true, outside: false };
+  }
+  if (topology.vertical === "death") {
+    return { next, wrapped: false, blocked: false, outside: true };
+  }
+  next.row = next.row < topology.minRow ? topology.maxRow : topology.minRow;
+  next.col = topology.minCol + topology.maxCol - current.col;
+  return { next, wrapped: true, blocked: false, outside: false };
+}
+
 export function slide(
-  level: PlayableLevel,
+  level: StraightSlideLevel,
   from: Cell,
   inputDirection: Direction,
   runState: RunState = INITIAL_RUN_STATE,
@@ -391,16 +467,33 @@ export function slide(
   let features = 0;
   let distance = 0;
   const waypoints: Cell[] = [];
+  const path: Cell[] = [];
+  const wraps: WrapTransition[] = [];
   const rotations = new Set<string>();
+  const traversedStates = new Set<string>([
+    `${cellKey(current)}|${direction}`,
+  ]);
 
   while (true) {
-    const vector = DIRECTION_VECTOR[direction];
-    const next = {
-      col: current.col + vector.col,
-      row: current.row + vector.row,
-    };
+    const stepped = topologyStep(current, direction, level.topology);
+    const next = stepped.next;
 
-    if (next.col < 0 || next.col >= GRID_COLS || next.row < 0 || next.row >= GRID_ROWS) {
+    if (stepped.blocked) {
+      return moved
+        ? {
+            outcome: "stop",
+            destination: current,
+            state: { ...runState },
+            features,
+            distance,
+            waypoints: appendEndpoint(waypoints, current),
+            path,
+            wraps,
+          }
+        : { outcome: "blocked" };
+    }
+
+    if (stepped.outside) {
       return {
         outcome: "death",
         edgeCell: current,
@@ -409,6 +502,8 @@ export function slide(
         features,
         distance,
         waypoints,
+        path,
+        wraps,
       };
     }
 
@@ -429,6 +524,8 @@ export function slide(
             features,
             distance,
             waypoints: appendEndpoint(waypoints, current),
+            path,
+            wraps,
           }
         : { outcome: "blocked" };
     }
@@ -443,6 +540,8 @@ export function slide(
         brokenIndex: fragileIndex,
         distance,
         waypoints: appendEndpoint(waypoints, current),
+        path,
+        wraps,
       };
     }
 
@@ -456,13 +555,20 @@ export function slide(
             features,
             distance,
             waypoints: appendEndpoint(waypoints, current),
+            path,
+            wraps,
           }
         : { outcome: "blocked" };
     }
 
+    const previousCell = { ...current };
     current = next;
     moved = true;
     distance += 1;
+    path.push({ ...current });
+    if (stepped.wrapped) {
+      wraps.push({ from: previousCell, to: { ...current } });
+    }
     if (requiredDirection) features |= FEATURE.oneWay;
     if (level.gates.has(nextKey) && runState.gateOpen) features |= FEATURE.gate;
     if (fragileIndex >= 0) features |= FEATURE.brokenPass;
@@ -481,6 +587,8 @@ export function slide(
         features,
         distance,
         waypoints: appendEndpoint(waypoints, current),
+        path,
+        wraps,
       };
     }
 
@@ -492,6 +600,8 @@ export function slide(
         features: features | FEATURE.switch,
         distance,
         waypoints: appendEndpoint(waypoints, current),
+        path,
+        wraps,
       };
     }
 
@@ -503,6 +613,8 @@ export function slide(
         features: features | FEATURE.phaseSwitch,
         distance,
         waypoints: appendEndpoint(waypoints, current),
+        path,
+        wraps,
       };
     }
 
@@ -516,6 +628,8 @@ export function slide(
         features: features | FEATURE.portal,
         distance,
         waypoints: appendEndpoint(waypoints, current),
+        path,
+        wraps,
       };
     }
 
@@ -529,6 +643,8 @@ export function slide(
           features: features | FEATURE.rotator,
           distance,
           waypoints: appendEndpoint(waypoints, current),
+          path,
+          wraps,
         };
       }
       rotations.add(rotationKey);
@@ -536,6 +652,22 @@ export function slide(
       waypoints.push({ ...current });
       direction = CLOCKWISE[direction];
     }
+
+    const routeKey = `${cellKey(current)}|${direction}`;
+    if (level.topology && traversedStates.has(routeKey)) {
+      return {
+        outcome: "death",
+        edgeCell: current,
+        direction,
+        state: { ...runState },
+        features,
+        distance,
+        waypoints,
+        path,
+        wraps,
+      };
+    }
+    traversedStates.add(routeKey);
   }
 }
 
@@ -548,7 +680,7 @@ export function boundaryTarget(edgeCell: Cell, direction: Direction): Point {
   return { x: center.x, y: WORLD_HEIGHT - half };
 }
 
-function solveLevel(level: Pick<Level, keyof PlayableLevel | "start">) {
+function solveLevel(level: StraightSlideLevel & Pick<Level, "start">) {
   type SearchNode = { cell: Cell; state: RunState; features: number };
   const startState = { ...INITIAL_RUN_STATE };
   const queue: SearchNode[] = [{ cell: { ...level.start }, state: startState, features: 0 }];
@@ -591,7 +723,7 @@ function solveLevel(level: Pick<Level, keyof PlayableLevel | "start">) {
 }
 
 function measureSolution(
-  level: Pick<Level, keyof PlayableLevel | "start">,
+  level: StraightSlideLevel & Pick<Level, "start">,
   path: Direction[],
 ) {
   let cell = { ...level.start };
