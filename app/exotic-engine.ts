@@ -1,12 +1,25 @@
+import {
+  DIRECTIONS,
+  INITIAL_RUN_STATE,
+  cellKey,
+  sameCell,
+  slide,
+  type Cell,
+  type Direction,
+  type RunState,
+  type StraightSlideLevel,
+  type StraightTopology,
+} from "./game-engine";
+
 export type ExoticWorldId =
   | "overlay_dimension"
   | "echo_galaxy"
   | "eclipse_planet"
   | "mobius_corridor";
 
-export type GridDirection = "up" | "down" | "left" | "right";
+export type GridDirection = Direction;
 export type ExoticAction = GridDirection | "shift";
-export type GridCell = { col: number; row: number };
+export type GridCell = Cell;
 
 export type ExoticWorld = {
   id: ExoticWorldId;
@@ -66,6 +79,16 @@ export type ExoticStep = {
   phaseChanged: boolean;
 };
 
+type SharedSlideResult = {
+  destination: GridCell;
+  path: GridCell[];
+  wrapped: boolean;
+  dead: boolean;
+  blocked: boolean;
+  reachedGoal: boolean;
+  hasKey: boolean;
+};
+
 export const EXOTIC_WORLDS: ExoticWorld[] = [
   {
     id: "overlay_dimension",
@@ -91,7 +114,7 @@ export const EXOTIC_WORLDS: ExoticWorld[] = [
     id: "eclipse_planet",
     name: "일식행성",
     english: "ECLIPSE PLANET",
-    description: "직진 이동이 끝날 때마다 바뀌는 낮과 밤을 계산하세요.",
+    description: "이동할 때마다 바뀌는 낮과 밤을 계산하세요.",
     tutorial:
       "직진 이동이 끝나면 낮과 밤이 바뀝니다. 해·달 무늬 벽과 같은 무늬의 목표만 현재 상태에서 작동합니다.",
     accent: "#ffb52e",
@@ -103,26 +126,18 @@ export const EXOTIC_WORLDS: ExoticWorld[] = [
     english: "MOBIUS CORRIDOR",
     description: "뒤집혀 연결되는 공간을 이용하세요.",
     tutorial:
-      "좌우 가장자리는 세로 좌표가 뒤집힌 채 이어집니다. 빛나는 가장자리의 대응 위치를 확인하세요.",
+      "좌우 가장자리는 세로 좌표가 뒤집힌 채 이어집니다. 같은 색 표시가 연결되는 위치입니다.",
     accent: "#b77cff",
     icon: "∞",
   },
 ];
 
-const DIRECTIONS: GridDirection[] = ["up", "down", "left", "right"];
-const VECTOR: Record<GridDirection, GridCell> = {
-  up: { col: 0, row: -1 },
-  down: { col: 0, row: 1 },
-  left: { col: -1, row: 0 },
-  right: { col: 1, row: 0 },
-};
+const EMPTY_SET = new Set<string>();
+const EMPTY_MAP = new Map<string, Direction>();
+const INACTIVE_GOAL = { col: -10_000, row: -10_000 };
 
 export function gridCellKey(cell: GridCell) {
-  return `${cell.col},${cell.row}`;
-}
-
-function sameCell(a: GridCell, b: GridCell) {
-  return a.col === b.col && a.row === b.row;
+  return cellKey(cell);
 }
 
 function cloneState(state: ExoticRunState): ExoticRunState {
@@ -133,26 +148,19 @@ function cloneState(state: ExoticRunState): ExoticRunState {
   };
 }
 
-function inside(stage: ExoticStage, cell: GridCell) {
-  return cell.col >= 0 && cell.col < stage.cols && cell.row >= 0 && cell.row < stage.rows;
-}
-
 function activeWallKeys(stage: ExoticStage, state: ExoticRunState) {
-  const cells = [...stage.walls];
-  if (stage.worldId === "overlay_dimension" && state.dimension === 1) {
-    cells.splice(0, cells.length, ...stage.altWalls);
+  if (stage.worldId === "overlay_dimension") {
+    return new Set(
+      (state.dimension === 0 ? stage.walls : stage.altWalls).map(gridCellKey),
+    );
   }
-  if (stage.worldId === "eclipse_planet") {
-    cells.push(...(state.phase === 0 ? stage.dayWalls : stage.nightWalls));
-  }
-  const keys = new Set(cells.map(gridCellKey));
-  // 낮/밤 전환 직후 캐릭터와 벽이 겹치지 않도록 현재 칸은 비워 둡니다.
-  if (stage.worldId === "eclipse_planet") keys.delete(gridCellKey(state.player));
-  return keys;
-}
 
-function collectKey(stage: ExoticStage, state: ExoticRunState, cell: GridCell) {
-  if (stage.keyCell && sameCell(stage.keyCell, cell)) state.hasKey = true;
+  const walls = new Set(stage.walls.map(gridCellKey));
+  if (stage.worldId === "eclipse_planet") {
+    const phaseWalls = state.phase === 0 ? stage.dayWalls : stage.nightWalls;
+    phaseWalls.forEach((cell) => walls.add(gridCellKey(cell)));
+  }
+  return walls;
 }
 
 function playerGoalOpen(stage: ExoticStage, state: ExoticRunState) {
@@ -174,95 +182,113 @@ function playerGoalOpen(stage: ExoticStage, state: ExoticRunState) {
   return true;
 }
 
-function nextMobiusCell(
-  stage: ExoticStage,
-  cell: GridCell,
-  direction: GridDirection,
-) {
-  const vector = VECTOR[direction];
-  const next = { col: cell.col + vector.col, row: cell.row + vector.row };
-  let wrapped = false;
-  if (next.col < 0 || next.col >= stage.cols) {
-    next.col = next.col < 0 ? stage.cols - 1 : 0;
-    next.row = stage.rows - 1 - cell.row;
-    wrapped = true;
-  } else if (next.row < 0 || next.row >= stage.rows) {
-    if (!stage.verticalWrap) {
-      return { next, wrapped: false, blockedBoundary: true };
-    }
-    next.row = next.row < 0 ? stage.rows - 1 : 0;
-    next.col = stage.cols - 1 - cell.col;
-    wrapped = true;
-  }
-  return { next, wrapped, blockedBoundary: false };
+function topologyFor(stage: ExoticStage): StraightTopology {
+  const isMobius = stage.worldId === "mobius_corridor";
+  return {
+    minCol: 0,
+    maxCol: stage.cols - 1,
+    minRow: 0,
+    maxRow: stage.rows - 1,
+    horizontal: isMobius ? "mobius" : "death",
+    vertical: isMobius ? (stage.verticalWrap ? "mobius" : "wall") : "death",
+  };
 }
 
-function slideOne(
+function straightLevelFor(
+  stage: ExoticStage,
+  state: ExoticRunState,
+  target: GridCell,
+  goalOpen: boolean,
+): StraightSlideLevel {
+  const keySwitches =
+    stage.keyCell && !state.hasKey
+      ? new Set([gridCellKey(stage.keyCell)])
+      : EMPTY_SET;
+  return {
+    blocks: activeWallKeys(stage, state),
+    goal: goalOpen ? target : INACTIVE_GOAL,
+    oneWays: EMPTY_MAP,
+    portals: [],
+    switches: keySwitches,
+    gates: EMPTY_SET,
+    fragileCells: [],
+    rotators: EMPTY_SET,
+    phaseSwitches: EMPTY_SET,
+    phaseA: EMPTY_SET,
+    phaseB: EMPTY_SET,
+    topology: topologyFor(stage),
+  };
+}
+
+function sharedRunState(state: ExoticRunState): RunState {
+  return {
+    ...INITIAL_RUN_STATE,
+    gateOpen: state.hasKey,
+    phase: state.phase,
+  };
+}
+
+export function sharedStraightSlide(
   stage: ExoticStage,
   state: ExoticRunState,
   from: GridCell,
   direction: GridDirection,
   target: GridCell,
   fixed = false,
-) {
+  goalOpen = true,
+): SharedSlideResult {
   if (fixed) {
     return {
       destination: { ...from },
-      path: [] as GridCell[],
+      path: [],
       wrapped: false,
       dead: false,
-      usedPhaseWall: false,
+      blocked: true,
+      reachedGoal: false,
+      hasKey: state.hasKey,
     };
   }
-  const walls = activeWallKeys(stage, state);
-  const phaseWallKeys = new Set(
-    [...stage.dayWalls, ...stage.nightWalls].map(gridCellKey),
-  );
-  let current = { ...from };
-  const path: GridCell[] = [];
-  let wrapped = false;
-  let usedPhaseWall = false;
-  const visited = new Set([gridCellKey(current)]);
 
-  for (let guard = 0; guard < stage.cols * stage.rows * 2; guard += 1) {
-    const candidate =
-      stage.worldId === "mobius_corridor"
-        ? nextMobiusCell(stage, current, direction)
-        : {
-            next: {
-              col: current.col + VECTOR[direction].col,
-              row: current.row + VECTOR[direction].row,
-            },
-            wrapped: false,
-            blockedBoundary: false,
-          };
-    if (candidate.blockedBoundary) break;
-    if (!inside(stage, candidate.next)) {
-      return { destination: current, path, wrapped, dead: true, usedPhaseWall };
-    }
-    const nextKey = gridCellKey(candidate.next);
-    if (walls.has(nextKey)) {
-      usedPhaseWall ||= stage.worldId === "eclipse_planet" && phaseWallKeys.has(nextKey);
-      break;
-    }
-    current = candidate.next;
-    path.push({ ...current });
-    wrapped ||= candidate.wrapped;
-    usedPhaseWall ||= stage.worldId === "eclipse_planet" && phaseWallKeys.has(nextKey);
-    collectKey(stage, state, current);
-    if (
-      sameCell(current, target) &&
-      (!sameCell(target, stage.goal) || playerGoalOpen(stage, state))
-    ) {
-      break;
-    }
-    const key = gridCellKey(current);
-    if (visited.has(key)) {
-      return { destination: current, path, wrapped, dead: true, usedPhaseWall };
-    }
-    visited.add(key);
+  const plan = slide(
+    straightLevelFor(stage, state, target, goalOpen),
+    from,
+    direction,
+    sharedRunState(state),
+  );
+
+  if (plan.outcome === "blocked") {
+    return {
+      destination: { ...from },
+      path: [],
+      wrapped: false,
+      dead: false,
+      blocked: true,
+      reachedGoal: false,
+      hasKey: state.hasKey,
+    };
   }
-  return { destination: current, path, wrapped, dead: false, usedPhaseWall };
+
+  if (plan.outcome === "death") {
+    return {
+      destination: { ...plan.edgeCell },
+      path: plan.path,
+      wrapped: plan.wraps.length > 0,
+      dead: true,
+      blocked: false,
+      reachedGoal: false,
+      hasKey: plan.state.gateOpen,
+    };
+  }
+
+  return {
+    destination: { ...plan.destination },
+    path: plan.path,
+    wrapped: plan.wraps.length > 0,
+    dead: false,
+    blocked: false,
+    reachedGoal: plan.outcome === "goal",
+    hasKey: plan.state.gateOpen,
+  };
 }
 
 export function initialExoticState(stage: ExoticStage): ExoticRunState {
@@ -281,8 +307,25 @@ export function initialExoticState(stage: ExoticStage): ExoticRunState {
 
 export function exoticComplete(stage: ExoticStage, state: ExoticRunState) {
   if (!state.playerDone) return false;
-  if (stage.worldId === "echo_galaxy") return state.echoDone && state.usedCoreRule;
+  if (stage.worldId === "echo_galaxy") {
+    return state.echoDone && state.usedCoreRule;
+  }
   return state.usedCoreRule;
+}
+
+function unchangedStep(state: ExoticRunState): ExoticStep {
+  return {
+    state,
+    changed: false,
+    complete: false,
+    dead: false,
+    playerPath: [],
+    echoPath: [],
+    playerWrapped: false,
+    echoWrapped: false,
+    dimensionChanged: false,
+    phaseChanged: false,
+  };
 }
 
 export function exoticStep(
@@ -303,18 +346,7 @@ export function exoticStep(
       stage.worldId !== "overlay_dimension" ||
       !stage.shiftCells.some((cell) => sameCell(cell, state.player))
     ) {
-      return {
-        state,
-        changed: false,
-        complete: false,
-        dead: false,
-        playerPath,
-        echoPath,
-        playerWrapped,
-        echoWrapped,
-        dimensionChanged,
-        phaseChanged,
-      };
+      return unchangedStep(state);
     }
     state.dimension = state.dimension === 0 ? 1 : 0;
     state.usedCoreRule = true;
@@ -334,9 +366,18 @@ export function exoticStep(
   }
 
   if (stage.worldId === "echo_galaxy") {
-    const playerMove = slideOne(stage, state, state.player, action, stage.goal, state.playerDone);
+    const playerMove = sharedStraightSlide(
+      stage,
+      state,
+      state.player,
+      action,
+      stage.goal,
+      state.playerDone,
+      playerGoalOpen(stage, state),
+    );
+    playerPath.push(...playerMove.path);
+    playerWrapped = playerMove.wrapped;
     if (playerMove.dead) {
-      playerPath.push(...playerMove.path);
       return {
         state,
         changed: true,
@@ -344,29 +385,29 @@ export function exoticStep(
         dead: true,
         playerPath,
         echoPath,
-        playerWrapped: playerMove.wrapped,
+        playerWrapped,
         echoWrapped,
         dimensionChanged,
         phaseChanged,
       };
     }
     state.player = playerMove.destination;
-    playerWrapped = playerMove.wrapped;
-    playerPath.push(...playerMove.path);
-    collectKey(stage, state, state.player);
-    if (sameCell(state.player, stage.goal) && playerGoalOpen(stage, state)) {
-      state.playerDone = true;
-    }
+    state.hasKey ||= playerMove.hasKey;
+    state.playerDone ||= playerMove.reachedGoal;
+
     if (state.previous && state.echo && !state.echoDone) {
-      const echoMove = slideOne(
+      const echoMove = sharedStraightSlide(
         stage,
         state,
         state.echo,
         state.previous,
         stage.echoGoal ?? stage.goal,
+        false,
+        true,
       );
+      echoPath.push(...echoMove.path);
+      echoWrapped = echoMove.wrapped;
       if (echoMove.dead) {
-        echoPath.push(...echoMove.path);
         return {
           state,
           changed: true,
@@ -375,23 +416,24 @@ export function exoticStep(
           playerPath,
           echoPath,
           playerWrapped,
-          echoWrapped: echoMove.wrapped,
+          echoWrapped,
           dimensionChanged,
           phaseChanged,
         };
       }
       state.echo = echoMove.destination;
-      echoWrapped = echoMove.wrapped;
-      echoPath.push(...echoMove.path);
-      if (stage.echoGoal && sameCell(state.echo, stage.echoGoal)) state.echoDone = true;
+      state.hasKey ||= echoMove.hasKey;
+      state.echoDone ||= echoMove.reachedGoal;
       state.usedCoreRule = true;
     }
+
     state.previous = action;
-    const changed =
-      playerPath.length > 0 || echoPath.length > 0 || source.previous !== state.previous;
     return {
       state,
-      changed,
+      changed:
+        playerPath.length > 0 ||
+        echoPath.length > 0 ||
+        source.previous !== state.previous,
       complete: exoticComplete(stage, state),
       dead: false,
       playerPath,
@@ -403,9 +445,19 @@ export function exoticStep(
     };
   }
 
-  const move = slideOne(stage, state, state.player, action, stage.goal, state.playerDone);
+  const move = sharedStraightSlide(
+    stage,
+    state,
+    state.player,
+    action,
+    stage.goal,
+    state.playerDone,
+    playerGoalOpen(stage, state),
+  );
+  playerPath.push(...move.path);
+  playerWrapped = move.wrapped;
+  if (move.blocked) return unchangedStep(state);
   if (move.dead) {
-    playerPath.push(...move.path);
     return {
       state,
       changed: true,
@@ -413,29 +465,45 @@ export function exoticStep(
       dead: true,
       playerPath,
       echoPath,
-      playerWrapped: move.wrapped,
+      playerWrapped,
       echoWrapped,
       dimensionChanged,
       phaseChanged,
     };
   }
+
   state.player = move.destination;
-  playerWrapped = move.wrapped;
-  playerPath.push(...move.path);
-  collectKey(stage, state, state.player);
-  if (sameCell(state.player, stage.goal) && playerGoalOpen(stage, state)) {
-    state.playerDone = true;
-  }
-  if (stage.worldId === "eclipse_planet" && playerPath.length > 0) {
-    state.usedCoreRule ||= move.usedPhaseWall;
-    state.phase = state.phase === 0 ? 1 : 0;
+  state.hasKey ||= move.hasKey;
+  state.playerDone ||= move.reachedGoal;
+
+  if (stage.worldId === "eclipse_planet") {
+    const nextPhase: 0 | 1 = state.phase === 0 ? 1 : 0;
+    const nextWalls = nextPhase === 0 ? stage.dayWalls : stage.nightWalls;
+    if (nextWalls.some((cell) => sameCell(cell, state.player))) {
+      return {
+        state,
+        changed: true,
+        complete: false,
+        dead: true,
+        playerPath,
+        echoPath,
+        playerWrapped,
+        echoWrapped,
+        dimensionChanged,
+        phaseChanged,
+      };
+    }
+    state.phase = nextPhase;
+    state.usedCoreRule = true;
     phaseChanged = true;
   }
-  if (stage.worldId === "mobius_corridor" && move.wrapped) state.usedCoreRule = true;
-  const changed = playerPath.length > 0;
+  if (stage.worldId === "mobius_corridor" && move.wrapped) {
+    state.usedCoreRule = true;
+  }
+
   return {
     state,
-    changed,
+    changed: playerPath.length > 0,
     complete: exoticComplete(stage, state),
     dead: false,
     playerPath,
@@ -458,20 +526,23 @@ function stateKey(stage: ExoticStage, state: ExoticRunState) {
     state.previous ?? "-",
     state.hasKey ? 1 : 0,
     state.usedCoreRule ? 1 : 0,
+    stage.worldId,
   ].join("|");
 }
 
 export function solveExoticStage(stage: ExoticStage, depthLimit = 36) {
   const initial = initialExoticState(stage);
   const actions: ExoticAction[] =
-    stage.worldId === "overlay_dimension" ? [...DIRECTIONS, "shift"] : DIRECTIONS;
+    stage.worldId === "overlay_dimension"
+      ? [...DIRECTIONS, "shift"]
+      : DIRECTIONS;
   const queue: Array<{ state: ExoticRunState; path: ExoticAction[] }> = [
     { state: initial, path: [] },
   ];
   const visited = new Set([stateKey(stage, initial)]);
   let cursor = 0;
 
-  while (cursor < queue.length && visited.size < 90000) {
+  while (cursor < queue.length && visited.size < 90_000) {
     const current = queue[cursor++];
     if (current.path.length >= depthLimit) continue;
     for (const action of actions) {
@@ -479,7 +550,11 @@ export function solveExoticStage(stage: ExoticStage, depthLimit = 36) {
       if (!step.changed || step.dead) continue;
       const path = [...current.path, action];
       if (step.complete) {
-        return { path, exploredStates: visited.size, usesCoreRule: step.state.usedCoreRule };
+        return {
+          path,
+          exploredStates: visited.size,
+          usesCoreRule: step.state.usedCoreRule,
+        };
       }
       const key = stateKey(stage, step.state);
       if (visited.has(key)) continue;
@@ -555,13 +630,23 @@ export function makeExoticCandidate(
   attempt: number,
 ): ExoticStage {
   const band = exoticStageBand(id);
-  const random = mulberry32((id * 99991 + attempt * 104729 + EXOTIC_WORLDS.findIndex((w) => w.id === worldId) * 7879) >>> 0);
+  const worldIndex = EXOTIC_WORLDS.findIndex((world) => world.id === worldId);
+  const random = mulberry32(
+    (id * 99991 + attempt * 104729 + worldIndex * 7879) >>> 0,
+  );
   const used = new Set<string>();
   const start = sampleCell(random, band.cols, band.rows, used);
   const goal = sampleCell(random, band.cols, band.rows, used);
-  const keyCell = id >= 11 ? sampleCell(random, band.cols, band.rows, used) : null;
-  const echoStart = worldId === "echo_galaxy" ? sampleCell(random, band.cols, band.rows, used) : null;
-  const echoGoal = worldId === "echo_galaxy" ? sampleCell(random, band.cols, band.rows, used) : null;
+  const keyCell =
+    id >= 11 ? sampleCell(random, band.cols, band.rows, used) : null;
+  const echoStart =
+    worldId === "echo_galaxy"
+      ? sampleCell(random, band.cols, band.rows, used)
+      : null;
+  const echoGoal =
+    worldId === "echo_galaxy"
+      ? sampleCell(random, band.cols, band.rows, used)
+      : null;
   const shiftCells =
     worldId === "overlay_dimension"
       ? Array.from({ length: id <= 5 ? 1 : id <= 15 ? 2 : 3 }, () =>
@@ -588,15 +673,24 @@ export function makeExoticCandidate(
       : worldId === "mobius_corridor"
         ? Math.max(0.26, band.density - 0.03)
         : band.density;
-  const walls = randomWalls(random, band.cols, band.rows, worldDensity, used);
+  const walls = randomWalls(
+    random,
+    band.cols,
+    band.rows,
+    worldDensity,
+    used,
+  );
   const altUsed = new Set(
-    [start, goal, ...(keyCell ? [keyCell] : []), ...shiftCells].map(gridCellKey),
+    [start, goal, ...(keyCell ? [keyCell] : []), ...shiftCells].map(
+      gridCellKey,
+    ),
   );
   const altWalls =
     worldId === "overlay_dimension"
       ? randomWalls(random, band.cols, band.rows, band.density, altUsed)
       : [];
-  const startPhase: 0 | 1 = worldId === "eclipse_planet" && id % 4 === 0 ? 1 : 0;
+  const startPhase: 0 | 1 =
+    worldId === "eclipse_planet" && id % 4 === 0 ? 1 : 0;
   const goalDimension: 0 | 1 | null =
     worldId === "overlay_dimension" ? (id % 3 === 0 ? 0 : 1) : null;
   const goalPhase: 0 | 1 | null =
@@ -628,48 +722,50 @@ export function makeExoticCandidate(
 
 const PRESET_ATTEMPTS: Record<ExoticWorldId, number[]> = {
   overlay_dimension: [
-    130, 108, 76, 4, 122, 33, 68, 28, 45, 625, 3401, 88, 24126, 9180, 93, 10504,
-    3144, 114, 9226, 5476, 7029, 11924, 2631, 77888, 5848, 17340, 26547, 327, 52138,
-    19942,
+    130, 108, 76, 4, 122, 33, 68, 28, 45, 625, 3401, 43, 68831, 9324, 93,
+    2984, 39, 70, 4664, 5563, 25045, 3179, 2631, 34650, 217, 8063, 58180,
+    327, 12146, 8786,
   ],
   echo_galaxy: [
-    0, 3, 29, 4, 11, 20, 6, 131, 90, 354, 171, 1212, 208, 2586, 370, 851, 511,
-    1001, 319, 307, 837, 6871, 2580, 2201, 7394, 4346, 39151, 13072, 15906, 96799,
+    0, 3, 29, 4, 11, 20, 6, 131, 90, 354, 154, 126, 208, 115, 257, 1810,
+    511, 496, 165, 5388, 2259, 3058, 1025, 72, 291, 4346, 2717, 5916,
+    12845, 19540,
   ],
   eclipse_planet: [
-    24, 17, 22, 1, 5, 43, 81, 150, 38, 860, 115, 37, 314, 134, 161, 572, 1461,
-    723, 4337, 23963, 7300, 3350, 1662, 2624, 2004, 30940, 68463, 3249, 12111,
-    60410,
+    1, 0, 4, 1, 4, 129, 25, 172, 201, 2493, 87, 32, 35, 117, 2, 136, 49,
+    270, 861, 2453, 1272, 827, 77, 1314, 726, 2146, 8795, 201, 13758, 1195,
   ],
   mobius_corridor: [
-    0, 0, 0, 0, 1, 1, 26, 1, 6, 30, 2, 0, 6, 6, 0, 27, 3, 10, 0, 30,
-    348, 6, 44, 26, 144, 334, 355, 581, 852, 1567,
+    0, 0, 0, 0, 1, 1, 26, 1, 6, 30, 2, 0, 3, 6, 0, 27, 3, 10, 0, 30,
+    212, 6, 44, 26, 144, 334, 355, 581, 852, 4996,
   ],
 };
 
-// 맵 제작 시 solveExoticStage로 검증해 고정한 최단 조작 수입니다.
-// 플레이 요청마다 120개 맵을 재탐색하지 않아 서버 실행 제한을 피합니다.
 const PRESET_PARS: Record<ExoticWorldId, number[]> = {
   overlay_dimension: [
-    4, 3, 4, 4, 4, 5, 5, 4, 5, 6, 9, 6, 11, 10, 10, 10, 12, 9, 9, 11, 15, 11,
-    13, 13, 16, 15, 14, 17, 14, 22,
+    4, 3, 4, 4, 4, 5, 5, 4, 5, 6, 9, 7, 9, 10, 11, 12, 8, 8, 10, 15,
+    16, 12, 13, 13, 14, 16, 16, 17, 19, 27,
   ],
   echo_galaxy: [
-    4, 3, 5, 5, 4, 4, 4, 4, 5, 6, 6, 7, 8, 8, 8, 8, 9, 8, 9, 10, 12, 13, 11,
-    11, 12, 15, 15, 15, 14, 18,
+    4, 3, 5, 5, 4, 4, 4, 4, 5, 6, 6, 6, 8, 6, 7, 11, 9, 8, 9, 10, 11,
+    12, 11, 12, 11, 16, 15, 17, 14, 18,
   ],
   eclipse_planet: [
-    2, 4, 2, 2, 2, 4, 4, 4, 4, 6, 6, 6, 8, 6, 6, 8, 8, 8, 8, 10, 12, 12, 12,
-    14, 12, 14, 14, 14, 14, 20,
+    2, 2, 2, 2, 2, 4, 4, 4, 4, 6, 10, 6, 6, 6, 6, 8, 14, 10, 8, 10,
+    12, 12, 12, 12, 12, 14, 14, 14, 14, 20,
   ],
   mobius_corridor: [
-    2, 2, 2, 3, 2, 7, 4, 5, 4, 6, 7, 7, 6, 9, 9, 9, 8, 8, 8, 11, 11, 13, 11,
-    11, 13, 14, 15, 14, 17, 18,
+    2, 2, 2, 3, 2, 7, 4, 5, 4, 6, 6, 6, 6, 9, 9, 9, 8, 8, 8, 11, 11,
+    13, 11, 11, 13, 14, 15, 14, 17, 19,
   ],
 };
 
 function loadStage(worldId: ExoticWorldId, id: number): ExoticStage {
-  const stage = makeExoticCandidate(worldId, id, PRESET_ATTEMPTS[worldId][id - 1]);
+  const stage = makeExoticCandidate(
+    worldId,
+    id,
+    PRESET_ATTEMPTS[worldId][id - 1],
+  );
   stage.par = PRESET_PARS[worldId][id - 1];
   return stage;
 }
@@ -678,6 +774,8 @@ export const EXOTIC_STAGES: Record<ExoticWorldId, ExoticStage[]> =
   Object.fromEntries(
     EXOTIC_WORLDS.map((world) => [
       world.id,
-      Array.from({ length: 30 }, (_, index) => loadStage(world.id, index + 1)),
+      Array.from({ length: 30 }, (_, index) =>
+        loadStage(world.id, index + 1),
+      ),
     ]),
   ) as Record<ExoticWorldId, ExoticStage[]>;
