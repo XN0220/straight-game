@@ -254,6 +254,10 @@ test("keeps four fixed-block 30-map wormhole worlds after removing gravity core"
     new URL("../app/exotic-engine.ts", import.meta.url),
     "utf8",
   );
+  const sharedEngineSource = await readFile(
+    new URL("../app/game-engine.ts", import.meta.url),
+    "utf8",
+  );
   const modeSource = await readFile(
     new URL("../app/exotic-mode.tsx", import.meta.url),
     "utf8",
@@ -286,23 +290,29 @@ test("keeps four fixed-block 30-map wormhole worlds after removing gravity core"
   assert.match(engineSource, /PRESET_PARS/);
   assert.match(engineSource, /stage\.par = PRESET_PARS/);
   assert.doesNotMatch(engineSource, /Object\.values\(EXOTIC_STAGES\).*forEach/s);
+  assert.match(engineSource, /import\s*\{[\s\S]*?\bslide\b[\s\S]*?\}\s*from "\.\/game-engine"/);
+  assert.match(engineSource, /export function sharedStraightSlide/);
+  assert.match(engineSource, /const plan = slide\(/);
+  assert.doesNotMatch(engineSource, /function slideOne|function nextMobiusCell|const VECTOR/);
+  assert.match(sharedEngineSource, /export type StraightTopology/);
+  assert.match(sharedEngineSource, /horizontal: "death" \| "wall" \| "mobius"/);
+  assert.match(sharedEngineSource, /const path: Cell\[\] = \[\]/);
+  assert.match(sharedEngineSource, /wraps\.push\(\{ from: previousCell, to: \{ \.\.\.current \} \}\)/);
   assert.match(engineSource, /state\.previous/);
   assert.match(engineSource, /dead:\s*true/);
-  assert.match(engineSource, /!inside\(stage, candidate\.next\)/);
-  assert.match(engineSource, /next\.row = stage\.rows - 1 - cell\.row/);
   assert.match(engineSource, /state\.phase === 0 \? 1 : 0/);
   assert.match(engineSource, /state\.dimension === 0 \? 1 : 0/);
   assert.match(engineSource, /dayWalls:\s*GridCell\[\]/);
   assert.match(engineSource, /nightWalls:\s*GridCell\[\]/);
   assert.match(engineSource, /goalDimension:\s*0 \| 1 \| null/);
   assert.match(engineSource, /goalPhase:\s*0 \| 1 \| null/);
-  assert.match(engineSource, /blockedBoundary:\s*true/);
+  assert.match(engineSource, /horizontal: isMobius \? "mobius" : "death"/);
   assert.match(engineSource, /state\.usedCoreRule = true/);
 
   assert.doesNotMatch(modeSource, /계산 최소 조작|최단 입력|탐색 상태|>검증</);
   assert.doesNotMatch(cssSource, /\.exotic-debug/);
   assert.match(modeSource, /item\.id === 10 \|\| item\.id === 20 \|\| item\.id === 30/);
-  assert.match(modeSource, /straight-line-\$\{worldId\}-bests-v1/);
+  assert.match(modeSource, /straight-line-\$\{worldId\}-bests-v2/);
   assert.match(modeSource, /EXOTIC_CELL_MS = 64/);
   assert.match(modeSource, /result\.playerPath\.length/);
   assert.match(modeSource, /setVisualState/);
