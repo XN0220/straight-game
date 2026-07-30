@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
@@ -31,7 +33,12 @@ import {
   type RunState,
 } from "./game-engine";
 import { SpeedControl, type MoveSpeed } from "./speed-control";
-import { WormholeMode } from "./wormhole-mode";
+
+const WormholeMode = lazy(() =>
+  import("./wormhole-mode").then((module) => ({
+    default: module.WormholeMode,
+  })),
+);
 
 type Screen = "menu" | "playing" | "won";
 type Pixel = string | null;
@@ -1962,10 +1969,19 @@ export default function Home() {
           )}
 
           {wormholeOpen && (
-            <WormholeMode
-              avatarPixels={avatarPixels}
-              onClose={() => setWormholeOpen(false)}
-            />
+            <Suspense
+              fallback={
+                <div className="wormhole-mode wormhole-loading" role="status">
+                  <span className="mini-wormhole" aria-hidden="true" />
+                  <strong>웜홀 통과 중</strong>
+                </div>
+              }
+            >
+              <WormholeMode
+                avatarPixels={avatarPixels}
+                onClose={() => setWormholeOpen(false)}
+              />
+            </Suspense>
           )}
 
           {isDead && (
