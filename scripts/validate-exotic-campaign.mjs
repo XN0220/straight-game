@@ -6,6 +6,7 @@ import {
   exoticStep,
   gridCellKey,
   initialExoticState,
+  sharedStraightSlide,
   solveExoticStage,
 } from "../app/exotic-engine.ts";
 
@@ -14,6 +15,21 @@ assert.equal(EXOTIC_WORLDS.length, 4, "중력핵을 제외한 신규 세계는 4
 function sharesCell(left, right) {
   const rightKeys = new Set(right.map(gridCellKey));
   return left.some((cell) => rightKeys.has(gridCellKey(cell)));
+}
+
+function playerGoalOpen(stage, state) {
+  if (stage.keyCell !== null && !state.hasKey) return false;
+  if (
+    stage.worldId === "overlay_dimension" &&
+    stage.goalDimension !== null &&
+    stage.goalDimension !== state.dimension
+  ) return false;
+  if (
+    stage.worldId === "eclipse_planet" &&
+    stage.goalPhase !== null &&
+    stage.goalPhase !== state.phase
+  ) return false;
+  return true;
 }
 
 function baseStage(worldId, overrides = {}) {
@@ -141,7 +157,27 @@ for (const world of EXOTIC_WORLDS) {
     let phaseChanges = 0;
     let longestVisibleSlide = 0;
     for (const action of solution.path) {
+      const sharedPlan =
+        action === "shift"
+          ? null
+          : sharedStraightSlide(
+              stage,
+              state,
+              state.player,
+              action,
+              stage.goal,
+              state.playerDone,
+              playerGoalOpen(stage, state),
+            );
       const step = exoticStep(stage, state, action);
+      if (sharedPlan) {
+        assert.deepEqual(
+          step.playerPath,
+          sharedPlan.path,
+          `${world.name} ${stage.id}단계가 기존 직진 엔진의 이동 경로와 다릅니다.`,
+        );
+        assert.equal(step.playerWrapped, sharedPlan.wrapped);
+      }
       assert.equal(step.dead, false, `${world.name} ${stage.id}단계의 검증 경로가 경계를 벗어납니다.`);
       longestVisibleSlide = Math.max(
         longestVisibleSlide,
