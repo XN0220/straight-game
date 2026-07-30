@@ -59,7 +59,7 @@ function cloneRunState(state: ExoticRunState): ExoticRunState {
 }
 
 function storageKey(worldId: ExoticWorldId) {
-  return `straight-line-${worldId}-bests-v1`;
+  return `straight-line-${worldId}-bests-v2`;
 }
 
 export function exoticTotalStars(worldId: ExoticWorldId) {
@@ -684,7 +684,6 @@ export function ExoticMode({
           <section className="exotic-select-heading">
             <span className="exotic-world-icon" aria-hidden="true">{world.icon}</span>
             <div>
-              <span className="beta-chip">독립 규칙 · 턴 기반 · 30단계</span>
               <h2>{world.name}</h2>
               <p>{world.description}</p>
             </div>
@@ -802,7 +801,7 @@ export function ExoticMode({
 
           {screen === "won" && (
             <div className="wormhole-win exotic-win">
-              <span>WORLD RULE STABLE</span>
+              <span>CLEAR</span>
               <h2>{world.name} {stage.id}단계 클리어!</h2>
               <div>{"★".repeat(starsFor(moves, stage.par))}{"☆".repeat(3 - starsFor(moves, stage.par))}</div>
               <p>{moves}번 조작 · 최소 {stage.par}</p>
