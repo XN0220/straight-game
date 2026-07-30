@@ -199,7 +199,7 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.match(wormholeModeSource, /실험 버전 · 30 MAPS/);
   assert.match(wormholeModeSource, /육각 성운 헥사리움/);
   assert.match(wormholeModeSource, /330 \/ moveSpeed/);
-  assert.match(wormholeModeSource, /3 EXPERIMENTS · 90 MAPS/);
+  assert.match(wormholeModeSource, /8 EXPERIMENTS · 240 MAPS/);
   assert.match(wormholeModeSource, /쌍성계 제미니아/);
   assert.match(wormholeModeSource, /radial-player-pixel/);
   assert.match(wormholeModeSource, /className="radial-up"/);
@@ -241,4 +241,57 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.match(twinModeSource, /ARRIVE/);
   assert.match(globalCssSource, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(globalCssSource, /\.twin-gimmick-state/);
+});
+
+test("adds five independently verified 30-map wormhole worlds without replacing existing worlds", async () => {
+  const engineSource = await readFile(
+    new URL("../app/exotic-engine.ts", import.meta.url),
+    "utf8",
+  );
+  const modeSource = await readFile(
+    new URL("../app/exotic-mode.tsx", import.meta.url),
+    "utf8",
+  );
+  const hubSource = await readFile(
+    new URL("../app/wormhole-mode.tsx", import.meta.url),
+    "utf8",
+  );
+  const cssSource = await readFile(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+
+  for (const world of [
+    "overlay_dimension",
+    "echo_galaxy",
+    "eclipse_planet",
+    "gravity_core",
+    "mobius_corridor",
+  ]) {
+    assert.match(engineSource, new RegExp(`"${world}"`));
+  }
+  for (const name of ["중첩차원", "잔상은하", "일식행성", "중력핵 행성", "뫼비우스 회랑"]) {
+    assert.match(engineSource, new RegExp(name));
+  }
+
+  assert.match(engineSource, /Array\.from\(\{ length: 30 \}/);
+  assert.match(engineSource, /solveExoticStage/);
+  assert.match(engineSource, /PRESET_ATTEMPTS/);
+  assert.match(engineSource, /stage\.auxiliaryMechanics\.length > 2/);
+  assert.match(engineSource, /!verified\.usesCoreRule/);
+  assert.match(engineSource, /state\.previous/);
+  assert.match(engineSource, /settleGravityLine/);
+  assert.match(engineSource, /next\.row = stage\.rows - 1 - cell\.row/);
+  assert.match(engineSource, /state\.phase === 0 \? 1 : 0/);
+  assert.match(engineSource, /state\.dimension === 0 \? 1 : 0/);
+
+  assert.match(modeSource, /계산 최소 조작/);
+  assert.match(modeSource, /탐색 상태/);
+  assert.match(modeSource, /보조 기믹 \{stage\.auxiliaryMechanics\.length\}종류/);
+  assert.match(modeSource, /item\.id === 10 \|\| item\.id === 20 \|\| item\.id === 30/);
+  assert.match(modeSource, /straight-line-\$\{worldId\}-bests-v1/);
+  assert.match(hubSource, /8 EXPERIMENTS · 240 MAPS/);
+  assert.match(hubSource, /EXOTIC_WORLDS\.map/);
+  assert.match(cssSource, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(cssSource, /\.exotic-stage-grid button\.is-exotic-boss/);
 });

@@ -1,6 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import {
+  EXOTIC_WORLDS,
+  type ExoticWorldId,
+} from "./exotic-engine";
+import { ExoticMode, exoticTotalStars } from "./exotic-mode";
 import { starsFor } from "./game-engine";
 import { HEX_STAGES } from "./hex-engine";
 import { HEX_BEST_KEY, HexMode } from "./hex-mode";
@@ -24,7 +36,7 @@ const RING_SIZE = 31;
 const CENTER = 300;
 
 type ModeScreen = "select" | "playing" | "won";
-type LabCampaign = "hub" | "radial" | "hex" | "twin";
+type LabCampaign = "hub" | "radial" | "hex" | "twin" | ExoticWorldId;
 
 const KEY_DIRECTION: Record<string, RadialDirection | undefined> = {
   ArrowUp: "out",
@@ -120,6 +132,9 @@ export function WormholeMode({
   const [twinBests, setTwinBests] = useState<Array<number | null>>(
     Array(TWIN_STAGES.length).fill(null),
   );
+  const [exoticStars, setExoticStars] = useState<Record<ExoticWorldId, number>>(
+    () => Object.fromEntries(EXOTIC_WORLDS.map((world) => [world.id, 0])) as Record<ExoticWorldId, number>,
+  );
   const timerRef = useRef<number | null>(null);
   const stage = WORMHOLE_STAGES[stageIndex];
 
@@ -150,6 +165,11 @@ export function WormholeMode({
           });
           setTwinBests(restoredTwin);
         }
+        setExoticStars(
+          Object.fromEntries(
+            EXOTIC_WORLDS.map((world) => [world.id, exoticTotalStars(world.id)]),
+          ) as Record<ExoticWorldId, number>,
+        );
       } catch {
         // 손상된 베타 기록은 공식 캠페인과 분리된 기본값으로 대체합니다.
       }
@@ -330,6 +350,23 @@ export function WormholeMode({
     );
   }
 
+  const exoticWorld = EXOTIC_WORLDS.find((world) => world.id === labCampaign);
+  if (exoticWorld) {
+    return (
+      <ExoticMode
+        worldId={exoticWorld.id}
+        avatarPixels={avatarPixels}
+        onClose={() => {
+          setExoticStars((previous) => ({
+            ...previous,
+            [exoticWorld.id]: exoticTotalStars(exoticWorld.id),
+          }));
+          setLabCampaign("hub");
+        }}
+      />
+    );
+  }
+
   if (labCampaign === "hub") {
     return (
       <div
@@ -347,9 +384,9 @@ export function WormholeMode({
         </header>
         <div className="lab-hub-content">
           <div className="lab-hub-heading">
-            <span className="beta-chip">3 EXPERIMENTS · 90 MAPS</span>
+            <span className="beta-chip">8 EXPERIMENTS · 240 MAPS</span>
             <h2>사각형 밖의 직진 규칙</h2>
-            <p>모양과 이동 축이 완전히 다른 실험 스테이지입니다. 구역을 고른 뒤 기존 맵 선택과 같은 방식으로 번호를 선택하세요.</p>
+            <p>공간과 이동 규칙이 서로 다른 독립 퍼즐 세계입니다. 각 세계의 초반에서 규칙을 익힌 뒤 10·20·30단계 보스에 도전하세요.</p>
           </div>
           <div className="lab-campaign-grid">
             <button
@@ -403,6 +440,26 @@ export function WormholeMode({
               </span>
               <span className="lab-card-score">★ {totalTwinStars}/90</span>
             </button>
+            {EXOTIC_WORLDS.map((world) => (
+              <button
+                key={world.id}
+                className={`lab-campaign-card exotic-campaign-card world-${world.id}`}
+                style={{ "--lab-accent": world.accent } as CSSProperties}
+                type="button"
+                onClick={() => setLabCampaign(world.id)}
+              >
+                <span className="lab-planet-image exotic-lab-image" aria-hidden="true">
+                  <i>{world.icon}</i>
+                  <b />
+                </span>
+                <span className="lab-card-copy">
+                  <small>{world.english} · 30 MAPS</small>
+                  <strong>{world.name}</strong>
+                  <em>{world.description}</em>
+                </span>
+                <span className="lab-card-score">★ {exoticStars[world.id]}/90</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
