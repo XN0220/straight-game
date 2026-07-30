@@ -582,7 +582,11 @@
   }
 
   .exotic-play {
-    padding: 10px 10px 22px;
+    min-height: 0;
+    height: calc(100dvh - 68px);
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+    padding: 8px 10px 10px;
   }
 
   .exotic-side {
@@ -599,14 +603,19 @@
 
   .exotic-board-area {
     width: 100%;
+    height: 100%;
+    min-height: 0;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    overflow: hidden;
   }
 
   .exotic-board {
-    width: min(100%, 430px);
+    width: auto;
+    max-width: min(100%, 430px);
+    height: 100%;
     min-width: 0;
-    max-height: none;
+    max-height: 100%;
     grid-column: 1;
     grid-row: 1;
   }
@@ -618,16 +627,16 @@
   }
 
   .exotic-dpad {
-    width: 148px;
-    grid-template-columns: repeat(3, 44px);
-    grid-template-rows: repeat(3, 44px);
+    width: 130px;
+    grid-template-columns: repeat(3, 40px);
+    grid-template-rows: repeat(3, 40px);
     grid-column: 1;
     grid-row: 3;
     align-self: center;
   }
 
   .exotic-dpad button {
-    min-height: 44px;
+    min-height: 40px;
   }
 }
 
@@ -806,6 +815,89 @@ button:focus-visible {
     linear-gradient(90deg, rgba(255, 255, 255, 0.016) 1px, transparent 1px),
     radial-gradient(circle at 50% 15%, #1a2223 0%, #0b0e11 33%, #07080b 72%);
   background-size: 42px 42px, 42px 42px, auto;
+}
+
+.site-shell.screen-playing,
+.site-shell.screen-wormhole {
+  height: 100svh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.screen-playing .game-wrap {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-items: center;
+  margin: 0 auto;
+  padding: 12px 0;
+}
+
+.screen-playing .game-panel {
+  width: auto;
+  max-width: 100%;
+  height: min(100%, calc((100vw - 44px) * 540 / 828));
+  max-height: 100%;
+  aspect-ratio: 828 / 540;
+  justify-self: center;
+}
+
+.screen-playing .game-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.screen-playing > .site-footer {
+  display: none;
+}
+
+.screen-wormhole > .topbar,
+.screen-wormhole > .site-footer,
+.screen-wormhole .play-footer {
+  display: none;
+}
+
+.screen-wormhole .game-wrap,
+.screen-wormhole .game-panel {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.screen-wormhole .game-canvas {
+  display: none;
+}
+
+.wormhole-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 31;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  background: #080510;
+}
+
+.wormhole-loading span {
+  width: 62px;
+  height: 62px;
+  border: 5px solid rgba(169, 135, 255, 0.2);
+  border-top-color: #a987ff;
+  border-radius: 50%;
+  animation: wormhole-spin 0.8s linear infinite;
+}
+
+.wormhole-loading strong {
+  color: #d9cdff;
+  font-size: 12px;
+  letter-spacing: 0.08em;
 }
 
 .site-shell::before {
@@ -2832,11 +2924,10 @@ button:focus-visible {
 }
 
 .wormhole-mode.is-playing {
-  min-height: 100%;
-  height: auto;
-  overflow-y: auto;
-  overscroll-behavior-y: auto;
-  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .wormhole-header {
@@ -3084,9 +3175,9 @@ button:focus-visible {
 }
 
 .wormhole-mode.is-playing .wormhole-play {
-  min-height: calc(100dvh - 68px);
-  height: auto;
-  overflow: visible;
+  min-height: 0;
+  height: calc(100dvh - 68px);
+  overflow: hidden;
 }
 
 .wormhole-side > p:not(.wormhole-rule) {
@@ -3998,6 +4089,15 @@ button:focus-visible {
     padding: 18px 0 14px;
   }
 
+  .screen-playing .game-wrap {
+    margin: 0 auto;
+    padding: 8px 0;
+  }
+
+  .screen-playing .game-panel {
+    height: min(100%, calc((100vw - 24px) * 540 / 828));
+  }
+
   .game-panel {
     border-radius: 6px;
   }
@@ -4231,6 +4331,11 @@ button:focus-visible {
     padding-top: 24px;
   }
 
+  .screen-playing .play-footer {
+    min-height: 136px;
+    padding-top: 8px;
+  }
+
   .footer-hint {
     max-width: 230px;
     flex-wrap: wrap;
@@ -4251,6 +4356,12 @@ button:focus-visible {
     grid-template-columns: repeat(3, 42px);
     grid-template-rows: repeat(3, 42px);
     gap: 5px;
+  }
+
+  .screen-playing .d-pad {
+    grid-template-columns: repeat(3, 38px);
+    grid-template-rows: repeat(3, 38px);
+    gap: 4px;
   }
 
   .d-pad button {
@@ -4544,13 +4655,13 @@ button:focus-visible {
   }
 
   .wormhole-play {
-    min-height: calc(100dvh - 68px);
-    height: auto;
+    min-height: 0;
+    height: calc(100dvh - 68px);
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto minmax(0, 1fr);
     align-items: start;
     gap: 7px;
-    overflow: visible;
+    overflow: hidden;
     padding: 8px 10px;
   }
 
@@ -4597,17 +4708,20 @@ button:focus-visible {
   }
 
   .radial-board {
-    height: auto;
+    height: 100%;
+    min-height: 0;
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
-    overflow: visible;
+    grid-template-rows: minmax(0, 1fr) auto;
+    overflow: hidden;
   }
 
   .radial-board svg {
-    width: 100%;
-    height: auto;
+    width: auto;
+    max-width: 100%;
+    height: 100%;
     min-height: 0;
-    max-height: none;
+    max-height: 100%;
+    justify-self: center;
   }
 
   .radial-dpad {
@@ -4623,7 +4737,7 @@ button:focus-visible {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(0, 1fr);
     align-items: start;
-    min-height: calc(100dvh - 68px);
+    min-height: 0;
     height: calc(100dvh - 68px);
     gap: 5px;
     padding: 5px 7px 7px;
@@ -5109,4 +5223,14 @@ button:focus-visible {
     width: 48px;
     height: 48px;
   }
+}
+
+/* 플레이 중에는 어떤 화면 크기에서도 게임 컨테이너가 뷰포트를 넘지 않습니다. */
+.screen-wormhole .game-panel,
+.screen-wormhole .game-panel.screen-menu,
+.screen-wormhole .game-panel.screen-playing,
+.screen-wormhole .game-panel.screen-won {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
 }
