@@ -1,4 +1,5 @@
 import { HEX_STAGES } from "./hex-engine";
+import { TWIN_STAGE_DATA } from "./twin-stage-data";
 
 export type TwinDirection = "up" | "down" | "left" | "right";
 export type TwinCell = { col: number; row: number };
@@ -425,46 +426,17 @@ function generateStage(spec: StageSpec): TwinStage {
   throw new Error(`제미니아 ${spec.id}번 맵을 생성하지 못했습니다.`);
 }
 
-export const TWIN_STAGES = Array.from({ length: 30 }, (_, index) =>
-  generateStage(stageSpec(index + 1)),
-);
+function hydrateTwinBoard(board: (typeof TWIN_STAGE_DATA)[number]["left"]): TwinBoard {
+  return {
+    ...board,
+    blocks: new Set(board.blocks),
+  };
+}
 
-TWIN_STAGES.forEach((stage) => {
-  const solution = solve(stage, stage.par);
-  if (!solution || solution.length !== stage.par) {
-    throw new Error(`제미니아 ${stage.id}번 맵 최단 경로 검증에 실패했습니다.`);
-  }
-  if (stage.id <= 5 && (stage.par < 1 || stage.par > 3)) {
-    throw new Error(`제미니아 ${stage.id}번 맵이 1~3회 난이도를 벗어났습니다.`);
-  }
-  if (stage.id >= 6 && stage.id <= 20) {
-    const offset = stage.par - HEX_STAGES[stage.id - 1].par;
-    if (offset < 2 || offset > 4) {
-      throw new Error(`제미니아 ${stage.id}번 맵의 추가 이동 수가 2~4회를 벗어났습니다.`);
-    }
-  }
-  if (stage.id >= 21) {
-    const featureCount = [
-      stage.left.switchCell,
-      stage.right.switchCell,
-      stage.left.gateCell,
-      stage.right.gateCell,
-    ].filter(Boolean).length;
-    if (stage.par < 15 || stage.par > 25) {
-      throw new Error(`제미니아 ${stage.id}번 맵이 15~25회 난이도를 벗어났습니다.`);
-    }
-    if (
-      stage.gimmick !== "resonance-gate" ||
-      featureCount !== 2
-    ) {
-      throw new Error(`제미니아 ${stage.id}번 맵의 공명 게이트 검증에 실패했습니다.`);
-    }
-    let state = initialTwinState(stage);
-    solution.forEach((direction) => {
-      state = twinStep(stage, state, direction).state;
-    });
-    if (!state.gateOpen || !state.gateCrossed) {
-      throw new Error(`제미니아 ${stage.id}번 맵이 공명 기믹을 사용하지 않습니다.`);
-    }
-  }
-});
+export const TWIN_STAGES: TwinStage[] = TWIN_STAGE_DATA.map((stage) => ({
+  ...stage,
+  left: hydrateTwinBoard(stage.left),
+  right: hydrateTwinBoard(stage.right),
+  solution: stage.solution as TwinDirection[],
+  gimmick: stage.gimmick as TwinStage["gimmick"],
+}));

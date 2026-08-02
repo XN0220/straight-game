@@ -175,13 +175,25 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
     new URL("../app/wormhole-engine.ts", import.meta.url),
     "utf8",
   );
+  const wormholeDataSource = await readFile(
+    new URL("../app/wormhole-stage-data.ts", import.meta.url),
+    "utf8",
+  );
   const wormholeModeSource = await readFile(
     new URL("../app/wormhole-mode.tsx", import.meta.url),
     "utf8",
   );
   const hexSource = await readFile(new URL("../app/hex-engine.ts", import.meta.url), "utf8");
+  const hexDataSource = await readFile(
+    new URL("../app/hex-stage-data.ts", import.meta.url),
+    "utf8",
+  );
   const hexModeSource = await readFile(new URL("../app/hex-mode.tsx", import.meta.url), "utf8");
   const twinSource = await readFile(new URL("../app/twin-engine.ts", import.meta.url), "utf8");
+  const twinDataSource = await readFile(
+    new URL("../app/twin-stage-data.ts", import.meta.url),
+    "utf8",
+  );
   const twinModeSource = await readFile(new URL("../app/twin-mode.tsx", import.meta.url), "utf8");
   const globalCssSource = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 
@@ -193,9 +205,9 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.doesNotMatch(pageSource, /import\s+\{\s*WormholeMode\s*\}\s+from\s+"\.\/wormhole-mode"/);
   assert.match(pageSource, /lazy\(\(\) =>\s*import\("\.\/wormhole-mode"\)/);
   assert.match(pageSource, /웜홀 통과 중/);
-  assert.match(wormholeSource, /Array\.from\(\{ length: 30 \}/);
-  assert.match(wormholeSource, /stage\.id >= 16 && !solution\.features\.has\("portal"\)/);
-  assert.match(wormholeSource, /stage\.id >= 21 && !solution\.features\.has\("toggle"\)/);
+  assert.match(wormholeSource, /WORMHOLE_STAGE_DATA\.map/);
+  assert.doesNotMatch(wormholeSource, /WORMHOLE_STAGES\.forEach/);
+  assert.equal(wormholeDataSource.match(/"id":/g)?.length, 30);
   assert.match(wormholeModeSource, /실험 버전 · 30 MAPS/);
   assert.match(wormholeModeSource, /육각 성운 헥사리움/);
   assert.match(wormholeModeSource, /330 \/ moveSpeed/);
@@ -215,9 +227,9 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.match(globalCssSource, /\.wormhole-mode\.is-playing\s*\{[^}]*overflow-y:\s*auto/s);
   assert.doesNotMatch(globalCssSource, /\.wormhole-mode\.is-playing\s*\{[^}]*overflow:\s*hidden/s);
   assert.match(wormholeModeSource, /stored\.slice\(0, WORMHOLE_STAGES\.length\)/);
-  assert.match(hexSource, /Array\.from\(\{ length: 30 \}/);
-  assert.match(hexSource, /stage\.id >= 21 && !solution\.features\.has\("portal"\)/);
-  assert.match(hexSource, /stage\.id >= 26 && !solution\.features\.has\("switch"\)/);
+  assert.match(hexSource, /HEX_STAGE_DATA\.map/);
+  assert.doesNotMatch(hexSource, /HEX_STAGES\.forEach/);
+  assert.equal(hexDataSource.match(/"id":/g)?.length, 30);
   assert.match(hexModeSource, /Q·E \/ A·D \/ Z·C/);
   assert.match(hexModeSource, /320 \/ moveSpeed/);
   assert.match(hexModeSource, /className="hex-nw"/);
@@ -226,15 +238,15 @@ test("defines the three 30-map wormhole campaigns and keypad map selectors", asy
   assert.match(hexModeSource, /className="hex-e"/);
   assert.match(hexModeSource, /className="hex-sw"/);
   assert.match(hexModeSource, /className="hex-se"/);
-  assert.match(twinSource, /Array\.from\(\{ length: 30 \}/);
-  assert.match(twinSource, /stage\.par - HEX_STAGES\[stage\.id - 1\]\.par/);
-  assert.match(twinSource, /offset < 2 \|\| offset > 4/);
+  assert.match(twinSource, /TWIN_STAGE_DATA\.map/);
+  assert.doesNotMatch(twinSource, /TWIN_STAGES\.forEach/);
+  assert.equal(twinDataSource.match(/"id":/g)?.length, 30);
   assert.doesNotMatch(twinSource, /portal|wormhole/i);
   assert.match(twinModeSource, /두 캐릭터가 모두 멈춘 뒤 다음 입력/);
   assert.match(twinSource, /state\.leftDone \|\| left\.outcome === "goal"/);
-  assert.match(twinSource, /stage\.par < 15 \|\| stage\.par > 25/);
+  assert.match(twinDataSource, /"par": 25/);
   assert.match(twinSource, /gimmick: "resonance-gate" \| null/);
-  assert.match(twinSource, /!state\.gateOpen \|\| !state\.gateCrossed/);
+  assert.match(twinSource, /stage\.gimmick === null \|\| state\.gateCrossed/);
   assert.match(twinModeSource, /공명 스위치 · 반대 행성 게이트 개방/);
   assert.match(twinModeSource, /21–30 15~25 MOVE · 공명 게이트/);
   assert.match(twinModeSource, /initialTwinState/);

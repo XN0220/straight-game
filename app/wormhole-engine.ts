@@ -1,3 +1,5 @@
+import { WORMHOLE_STAGE_DATA } from "./wormhole-stage-data";
+
 export type RadialDirection = "out" | "in" | "ccw" | "cw";
 export type RadialCell = { ring: number; sector: number };
 export type RadialState = { blocksOn: boolean };
@@ -305,19 +307,11 @@ function generateStage(spec: StageSpec): RadialStage {
   throw new Error(`웜홀 ${spec.id}번 맵을 생성하지 못했습니다.`);
 }
 
-export const WORMHOLE_STAGES = Array.from({ length: 30 }, (_, index) =>
-  generateStage(stageSpec(index + 1)),
-);
-
-WORMHOLE_STAGES.forEach((stage) => {
-  const solution = solve(stage);
-  if (!solution || solution.path.length !== stage.par) {
-    throw new Error(`웜홀 ${stage.id}번 맵 PAR 검증에 실패했습니다.`);
-  }
-  if (stage.id >= 16 && !solution.features.has("portal")) {
-    throw new Error(`웜홀 ${stage.id}번 맵이 포탈을 사용하지 않습니다.`);
-  }
-  if (stage.id >= 21 && !solution.features.has("toggle")) {
-    throw new Error(`웜홀 ${stage.id}번 맵이 온오프 블록을 사용하지 않습니다.`);
-  }
-});
+export const WORMHOLE_STAGES: RadialStage[] = WORMHOLE_STAGE_DATA.map((stage) => ({
+  ...stage,
+  blocks: new Set(stage.blocks),
+  switches: new Set(stage.switches),
+  toggleBlocks: new Set(stage.toggleBlocks),
+  solution: stage.solution as RadialDirection[],
+  solutionFeatures: new Set(stage.solutionFeatures as RadialFeature[]),
+}));

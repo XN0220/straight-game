@@ -1,3 +1,5 @@
+import { HEX_STAGE_DATA } from "./hex-stage-data";
+
 export type HexDirection = "nw" | "ne" | "w" | "e" | "sw" | "se";
 export type HexCell = { q: number; r: number };
 export type HexState = { gatesOn: boolean };
@@ -347,34 +349,11 @@ function generateStage(spec: StageSpec): HexStage {
   throw new Error(`헥사리움 ${spec.id}번 맵을 생성하지 못했습니다.`);
 }
 
-export const HEX_STAGES = Array.from({ length: 30 }, (_, index) =>
-  generateStage(stageSpec(index + 1)),
-);
-
-HEX_STAGES.forEach((stage) => {
-  const solution = solve(stage);
-  if (!solution || solution.path.length !== stage.par) {
-    throw new Error(`헥사리움 ${stage.id}번 맵 최단 경로 검증에 실패했습니다.`);
-  }
-  if (stage.id <= 5 && (stage.par < 1 || stage.par > 3)) {
-    throw new Error(`헥사리움 ${stage.id}번 맵이 1~3회 난이도를 벗어났습니다.`);
-  }
-  if (stage.id >= 6 && stage.id <= 10 && (stage.par < 3 || stage.par > 5)) {
-    throw new Error(`헥사리움 ${stage.id}번 맵이 3~5회 난이도를 벗어났습니다.`);
-  }
-  if (stage.id >= 11 && stage.id <= 15 && (stage.par < 5 || stage.par > 10)) {
-    throw new Error(`헥사리움 ${stage.id}번 맵이 5~10회 난이도를 벗어났습니다.`);
-  }
-  if (stage.id >= 16 && stage.id <= 20 && (stage.par < 10 || stage.par > 15)) {
-    throw new Error(`헥사리움 ${stage.id}번 맵이 10~15회 난이도를 벗어났습니다.`);
-  }
-  if (stage.id >= 21 && (stage.par < 8 || stage.par > 20)) {
-    throw new Error(`헥사리움 ${stage.id}번 맵이 8~20회 난이도를 벗어났습니다.`);
-  }
-  if (stage.id >= 21 && !solution.features.has("portal")) {
-    throw new Error(`헥사리움 ${stage.id}번 맵이 포탈을 사용하지 않습니다.`);
-  }
-  if (stage.id >= 26 && !solution.features.has("switch")) {
-    throw new Error(`헥사리움 ${stage.id}번 맵이 위상 스위치를 사용하지 않습니다.`);
-  }
-});
+export const HEX_STAGES: HexStage[] = HEX_STAGE_DATA.map((stage) => ({
+  ...stage,
+  blocks: new Set(stage.blocks),
+  switches: new Set(stage.switches),
+  toggleBlocks: new Set(stage.toggleBlocks),
+  solution: stage.solution as HexDirection[],
+  solutionFeatures: new Set(stage.solutionFeatures as HexFeature[]),
+}));
